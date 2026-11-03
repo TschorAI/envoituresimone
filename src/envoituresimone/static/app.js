@@ -188,7 +188,7 @@ $("go-refill").addEventListener("click", () => run($("go-refill"), $("refill-out
       <button id="cmp-go" class="small" disabled>Comparer (0/2)</button>
     </div>
     <div id="refill-compare"></div>
-    <p class="muted">${d.found} stations trouvées, ${d.routed} classées par itinéraire réel. Trajet = aller-retour (carburant + usure).</p>
+    <p class="muted">${d.found} stations trouvées, ${d.routed} classées par itinéraire réel. Trajet = aller-retour (carburant + usure). ${d.prices.kind === "snapshot" ? `Prix relevés le ${new Date(d.prices.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}.` : "Prix en direct."}</p>
     <table><thead><tr><th></th><th>#</th><th>Station</th><th class="num">Pompe €/L</th><th class="num">Trajet</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>`;
   const n = d.stations.length;
   d.stations.forEach((s, i) => {

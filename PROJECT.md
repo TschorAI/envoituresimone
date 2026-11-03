@@ -23,7 +23,7 @@ External inputs, all read-only:
 
 | Input | Through | Cost |
 |---|---|---|
-| Live fuel prices (prix-carburants.gouv.fr instant flow, `data.economie.gouv.fr` API) | `connectors/prices.py` | Free, no key. One call per 100 stations, cached 10 min in memory. |
+| Fuel prices (prix-carburants.gouv.fr instant flow, `data.economie.gouv.fr`) | `tools/fetch_prices.py` (hourly bulk parquet export, ~600 KB, 1 call) -> `data/prices/`; `connectors/prices.py` reads it, and calls the live API only if the snapshot is missing or older than 3 h | Free, no key. |
 | Géoplateforme IGN address search, completion, reverse (`data.geopf.fr/geocodage`) | `connectors/geocode.py` | Free, no key. Cached 24 h in memory. |
 | OpenRouteService directions and matrix (`api.openrouteservice.org`, OSM) | `connectors/routing.py` | Free key, 2000 directions and 500 matrix calls a day. Use case A: 1 matrix call per search + 1 directions call per station clicked. |
 | OpenStreetMap tiles, Leaflet 1.9.4 (unpkg CDN) | the browser | Free, fair use. |
@@ -48,7 +48,9 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 | `src/app.py` | Starts the web app on http://127.0.0.1:8000 (`--port N`, `--reload`) | the package below, `.env` | nothing | stays up |
 | `src/envoituresimone/cost.py` | The cost model, pure functions (no I/O): consumption curve, refill cost, route cost (route cost kept for v2) | nothing | nothing | instant |
 | `src/envoituresimone/api.py` | FastAPI app: `/api/refill` (A), `/api/leg`, `/api/complete`, `/api/geocode`, `/api/reverse`, `/api/config`, and the page | connectors | nothing | 1-5 s a request |
-| `src/envoituresimone/connectors/` | One HTTP client per service (prices, geocode, routing) | the services of section 2 | nothing | network-bound |
+| `src/envoituresimone/connectors/` | One client per service (prices from the snapshot or live, geocode, routing) | the services of section 2, `data/prices/latest.parquet` | nothing | network-bound |
+| `tools/fetch_prices.py` | Hourly snapshot of all station prices, plus a history of every price change | `data.economie.gouv.fr` | `data/prices/latest.parquet`, `data/prices/history/YYYY-MM.parquet` | ~3 s |
+| `tools/schedule_prices.sh` | Installs the cron job that runs `fetch_prices.py` at minute 7 of every hour (`--remove` to take it off) | crontab | crontab | instant |
 | `src/envoituresimone/static/` | The page: Leaflet map, address autocomplete, map picking, curve editor, results | `/api/*` | browser localStorage (curve, points, fuel) | - |
 | `src/tests/test_cost.py` | Checks the cost model on hand-computed cases (`uv run pytest`) | nothing | nothing | < 1 s |
 
@@ -60,6 +62,7 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 - Units: km, hours, km/h, L/100 km, EUR/L, EUR. Points are (lat, lon) in the code, [lon, lat] only at the ORS boundary.
 - Fuel keys follow the price dataset prefixes: `e10`, `gazole`. E10 uses the former SP95 curve (E10 burns a little more, about 1-2 %; adjust in the app).
 - Consumption: linear interpolation on the speed curve, flat beyond its ends. Each route step of ORS is one leg at its own average speed.
+- Price timestamps (`updated`) are French local time: the source labels them UTC but they are local. Prices not updated for more than 7 days are left out of the ranking (about 10 % of stations on 2026-11-03; one Paris E10 price dated from August 2025 and ranked first).
 - Use case A: round trip = 2 x the one-way road route. Fuel burnt on the way is priced at the station's price. Only the 25 best stations on a crow-fly pre-ranking are routed (quota).
 - Use case B (A -> B trip) is not in v1: see `src/_v2-trip.md`.
 - Wear: 0.10 EUR/km, on by default, off when unchecked.
@@ -87,6 +90,7 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 - 2026-11-03: SP95 replaced by E10 (many stations sell only E10).
 - 2026-11-03: use case A: detail card per station (pump price, refill, trip fuel and wear), comparison of two stations (table and both routes on the map). Fuel on fast roads stays at the ORS average speed, consistent with trip times (user choice).
 - 2026-11-03: A -> B trip removed from the app (flat toll estimate too rough); v2 plan in `src/_v2-trip.md`.
+- 2026-11-03: hourly price snapshot with history (`tools/fetch_prices.py`); prices older than 7 days left out.
 
 ## 8. Setting up a machine
 
@@ -99,6 +103,9 @@ Never write credential values into `.env` yourself, and never print them.
 The check: `uv run pytest -q` (cost model tests, no network).
 
 Run the app: `uv run python src/app.py`, then open http://127.0.0.1:8000.
+
+Prices: `bash tools/schedule_prices.sh` once per machine installs the hourly snapshot (cron). The
+log is `data/prices/fetch.log`. When the machine is off, the app falls back on the live API.
 
 ## 9. Index: every file
 
@@ -130,9 +137,13 @@ Run the app: `uv run python src/app.py`, then open http://127.0.0.1:8000.
 ### Tools
 
 - `tools/setup.sh` — sets the project up on a new machine (section 8).
+- `tools/fetch_prices.py` — hourly price snapshot and price history into `data/prices/`.
+- `tools/schedule_prices.sh` — installs or removes the hourly cron job for `fetch_prices.py`.
 
 ### Sources and data
 
-_None yet._
+- `data/prices/latest.parquet` — every station with its E10 and diesel price, position and update time; replaced hourly.
+- `data/prices/history/YYYY-MM.parquet` — every price change seen (id, fuel, price, updated), one file a month.
+- `data/prices/fetch.log` — one line per hourly run.
 
 Rebuild the documents with `uv run genau-docs`, and a video with `uv run genau-video`.

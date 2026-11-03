@@ -2,6 +2,7 @@
 # Reads: the connectors (live prices, geocoding, routing), static/. Writes: nothing.
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -39,6 +40,7 @@ class RefillIn(Common):
     litres: float = Field(40, gt=0, le=200)
     radius_km: float = Field(10, gt=0, le=50)
     max_routed: int = Field(25, ge=1, le=50)
+    max_price_age_days: float = Field(7, gt=0)  # older prices are left out
 
 
 class LegIn(BaseModel):
@@ -83,6 +85,10 @@ async def refill(q: RefillIn):
     _check_fuel(q.fuel)
     curve = q.the_curve()
     stations = await prices.stations_near(q.home.lat, q.home.lon, q.radius_km, q.fuel)
+    cutoff = datetime.now() - timedelta(days=q.max_price_age_days)
+    fresh = [s for s in stations if s["updated"] and datetime.fromisoformat(s["updated"]) >= cutoff]
+    stale = len(stations) - len(fresh)
+    stations = fresh
     if not stations:
         return {"stations": [], "found": 0, "routing": routing.has_key(), "notes": [
             f"Aucune station ne vend du {prices.FUELS[q.fuel]} à moins de {q.radius_km:g} km."]}
@@ -94,6 +100,9 @@ async def refill(q: RefillIn):
                                 curve, q.wear_eur_km).total_eur
     candidates = sorted(stations, key=rough)[: q.max_routed]
     notes = []
+    if stale:
+        notes.append(f"{stale} station(s) écartée(s) : prix non mis à jour depuis plus de "
+                     f"{q.max_price_age_days:g} jours.")
     try:
         dist = await routing.one_to_many(q.home.t(), [(s["lat"], s["lon"]) for s in candidates])
     except routing.RoutingError as e:
@@ -120,7 +129,7 @@ async def refill(q: RefillIn):
             f"({cheapest_pump['total_eur'] - best['total_eur']:.2f} € de plus).")
     return {"stations": ranked, "found": len(stations), "routed": len(candidates),
             "best_id": best["id"], "cheapest_pump_id": cheapest_pump["id"],
-            "routing": routing.has_key(), "notes": notes}
+            "routing": routing.has_key(), "prices": prices.source(), "notes": notes}
 
 
 @app.post("/api/leg")
