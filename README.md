@@ -6,7 +6,7 @@
 - **Status:** in progress
 - **Created by:** leonardtschora
 - **Created on:** 2026-11-03
-- **Repository:** https://github.com/leonardtschora/envoituresimone
+- **Repository:** https://github.com/TschorAI/envoituresimone
 - **Shared drive and tasks:** personal project, own drive · task board https://github.com/users/leonardtschora/projects/18
 
 ## In short

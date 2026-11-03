@@ -45,7 +45,7 @@ Keep the project root clean: `README.md`, `PROJECT.md`, `CLAUDE.md`, `pyproject.
 
 ## Where things are stored
 
-| | GitHub (https://github.com/leonardtschora/envoituresimone, private) | The user's own drive |
+| | GitHub (https://github.com/TschorAI/envoituresimone, public) | The user's own drive |
 |---|---|---|
 | `src/`, `tools/`, `pyproject.toml`, `uv.lock`, `CLAUDE.md`, `.claude/` | yes | no |
 | `README.md` | yes | yes |
