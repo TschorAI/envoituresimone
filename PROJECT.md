@@ -162,6 +162,7 @@ Locally, to work on use case A: `ENABLE_REFILL=1 uv run python src/app.py`.
 
 - `tools/setup.sh` — sets the project up on a new machine (section 8).
 - `Dockerfile`, `.dockerignore` (project root) — the deployed image (section 8).
+- `LICENSE` — MIT, Léonard Tschora (the repository is public since 2026-11-04).
 - `tools/fetch_prices.py` — takes one price snapshot by hand.
 
 ### Sources and data

@@ -41,7 +41,7 @@ Where a new file goes:
 - It is code that produces something in `out/` (figure, prediction, model, analysis) -> `src/`
 - It is code that fetches or prepares `data/`, or a checker -> `tools/`
 
-Keep the project root clean: `README.md`, `PROJECT.md`, `CLAUDE.md`, `pyproject.toml`, `uv.lock` and the folders.
+Keep the project root clean: `README.md`, `PROJECT.md`, `CLAUDE.md`, `LICENSE` (MIT), `Dockerfile`, `.dockerignore`, `pyproject.toml`, `uv.lock` and the folders.
 
 ## Where things are stored
 
