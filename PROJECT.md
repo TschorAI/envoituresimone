@@ -9,6 +9,10 @@ true when the code changes.
 
 A web app for French drivers that gives the real cost of a refill or a trip. Use case A: the cheapest station near home, counting fuel bought plus fuel, wear and tear spent to drive there. Use case B: the cost of an A -> B route, fastest (with tolls) against toll-free, counting fuel, wear and tolls. Data: prix-carburants.gouv.fr (live station prices), Géoplateforme geocoding, OpenRouteService routing (OSM, avoid tollways). V1 (use case A only): E10 and Diesel, editable consumption-by-speed curve per fuel, wear 0.10 EUR/km (optional, on by default). Use case B moves to v2, with real toll tariffs. Out of scope: price forecasting, car models.
 
+Purpose: a hands-on project to learn Dataiku and n8n. The local app (FastAPI + Leaflet) is the
+reference; the target splits the work between a Dataiku Cloud project (price pipeline, history,
+checks, ranking API, webapp) and n8n workflows (orchestration, webhooks, alerts), on free trials.
+
 ## 2. Data flow
 
     sources/  (as received)
