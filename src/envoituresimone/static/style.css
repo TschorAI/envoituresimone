@@ -8,6 +8,8 @@ h1 { margin: 0; font-size: 20px; }
 .tabs { display: flex; gap: 4px; margin-bottom: 10px; }
 .tabs button { flex: 1; padding: 8px; border: 1px solid #c9d1db; background: #fff; border-radius: 6px; cursor: pointer; font-weight: 600; }
 .tabs button.active { background: #1f5fbf; color: #fff; border-color: #1f5fbf; }
+.tabs button:disabled { color: #9aa3ae; background: #f1f3f5; cursor: not-allowed; font-weight: 500; }
+.tabs button small { display: block; font-size: 10px; font-weight: 500; }
 label { display: block; margin: 6px 0; font-weight: 600; font-size: 12px; color: #3a4452; }
 input, select { width: 100%; padding: 6px 8px; border: 1px solid #c9d1db; border-radius: 5px; font: inherit; font-weight: 400; }
 .row { display: flex; gap: 8px; align-items: end; }

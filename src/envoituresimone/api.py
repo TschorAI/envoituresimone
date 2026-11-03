@@ -11,7 +11,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -19,6 +19,11 @@ from . import cost, snapshot
 from .connectors import geocode, prices, routing
 
 STATIC = Path(__file__).resolve().parent / "static"
+# Feature flag: the refill ranking (use case A) is off unless ENABLE_REFILL=1. Off, the public
+# site shows only the price map, and the endpoints that spend the OpenRouteService quota answer 404.
+REFILL_ON = os.environ.get("ENABLE_REFILL", "0") == "1"
+# Visitor counting: GoatCounter (no cookies, no personal data), only if GOATCOUNTER_CODE is set.
+GOATCOUNTER_CODE = os.environ.get("GOATCOUNTER_CODE", "").strip()
 
 
 @asynccontextmanager
@@ -65,15 +70,26 @@ class LegIn(BaseModel):
     b: Point
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def index():
-    return FileResponse(STATIC / "index.html")
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    if GOATCOUNTER_CODE:
+        tag = (f'<script data-goatcounter="https://{GOATCOUNTER_CODE}.goatcounter.com/count" '
+               'async src="//gc.zgo.at/count.js"></script>')
+        html = html.replace("</body>", f"{tag}\n</body>")
+    return html
+
+
+def _refill_on():
+    if not REFILL_ON:
+        raise HTTPException(404, "Fonction pas encore disponible.")
 
 
 @app.get("/api/config")
 def config():
     return {"fuels": prices.FUELS, "curves": cost.DEFAULT_CURVES,
-            "wear_eur_km": cost.DEFAULT_WEAR_EUR_KM, "routing": routing.has_key()}
+            "wear_eur_km": cost.DEFAULT_WEAR_EUR_KM, "routing": routing.has_key(),
+            "features": {"refill": REFILL_ON}}
 
 
 @app.get("/api/complete")
@@ -99,6 +115,7 @@ def _check_fuel(fuel: str):
 @app.post("/api/refill")
 async def refill(q: RefillIn):
     """Use case A: rank the stations around home by the real cost of the refill."""
+    _refill_on()
     _check_fuel(q.fuel)
     curve = q.the_curve()
     stations = await prices.stations_near(q.home.lat, q.home.lon, q.radius_km, q.fuel)
@@ -175,6 +192,7 @@ def price_map(fuel: str = "e10", max_price_age_days: float = 7):
 @app.post("/api/leg")
 async def leg(q: LegIn):
     """Road geometry between two points (fastest), to draw the way to a station."""
+    _refill_on()
     try:
         r = await routing.route(q.a.t(), q.b.t(), avoid_tolls=False)
     except routing.RoutingError as e:

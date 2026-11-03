@@ -356,7 +356,13 @@ async function showCompare() {
   $("fuel").addEventListener("change", () => { localStorage.setItem("fuel", fuel()); renderCurve(); });
   $("pm-fuel").innerHTML = $("fuel").innerHTML; $("pm-fuel").value = $("fuel").value;
   $("wear").value = CFG.wear_eur_km;
-  $("routing-warning").hidden = CFG.routing;
+  $("routing-warning").hidden = CFG.routing || !CFG.features.refill;
+  if (!CFG.features.refill) {   // public map-only release: refill tab shown but disabled
+    const b = $("tab-btn-refill");
+    b.disabled = true; b.innerHTML = "Faire le plein<small>bientôt</small>"; b.title = "Bientôt disponible";
+    $("subtitle").textContent = "Les prix des carburants dans toutes les stations de France, mis à jour toutes les heures.";
+    document.querySelector('.tabs button[data-tab="pricemap"]').click();
+  }
   renderCurve();
   for (const name of ["home"]) {
     const p = localStorage.getItem(`pt-${name}`);

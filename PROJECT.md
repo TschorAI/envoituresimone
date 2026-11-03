@@ -31,6 +31,7 @@ External inputs, all read-only:
 | Géoplateforme IGN address search, completion, reverse (`data.geopf.fr/geocodage`) | `connectors/geocode.py` | Free, no key. Cached 24 h in memory. |
 | OpenRouteService directions and matrix (`api.openrouteservice.org`, OSM) | `connectors/routing.py` | Free key, 2000 directions and 500 matrix calls a day. Use case A: 1 matrix call per search + 1 directions call per station clicked. |
 | OpenStreetMap tiles, Leaflet 1.9.4 (unpkg CDN) | the browser | Free, fair use. |
+| GoatCounter visitor counting (`gc.zgo.at/count.js`, no cookies) | the page, only if `GOATCOUNTER_CODE` is set | Free for non-commercial use. |
 
 Note the cost of each: a web download (cached or not), a database read, a remote job, anything
 that touches production. Mark what must never run by default.
@@ -98,6 +99,7 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 - 2026-11-03: Dataiku and n8n dropped from this project; their tests moved elsewhere (`src/_tool-tests.md`).
 - 2026-11-03: the app refreshes prices hourly by itself (for Railway: a cron service would not share the disk); Dockerfile; genau-kit moved to the `docs` dependency group.
 - 2026-11-03: use case C, the national price map, in a second tab.
+- 2026-11-03: public release is map-only: use case A behind `ENABLE_REFILL` (tab shown disabled, "bientôt"); optional GoatCounter visitor counting.
 
 ## 8. Setting up a machine
 
@@ -122,7 +124,10 @@ replica would refresh on its own. The image leaves out `genau-kit` (private GENA
 
 Other environment variables, all optional: `HOST` (default 127.0.0.1, 0.0.0.0 in the image),
 `PORT` (8000), `DATA_DIR` (the project's `data/`, `/app/data` in the image), `PRICE_REFRESH`
-(`0` turns the hourly snapshot off).
+(`0` turns the hourly snapshot off), `ENABLE_REFILL` (`1` turns use case A on; off by default, so the
+public site shows only the price map and `/api/refill`, `/api/leg` answer 404), `GOATCOUNTER_CODE`
+(the GoatCounter site code, e.g. `simone` for `simone.goatcounter.com`; unset, no counting).
+Locally, to work on use case A: `ENABLE_REFILL=1 uv run python src/app.py`.
 
 ## 9. Index: every file
 
