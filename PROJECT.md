@@ -86,6 +86,7 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 - 2026-11-03: project created.
 - 2026-11-03: local web app v1: both use cases, live prices, geocoding, ORS routing, Leaflet map.
 - 2026-11-03: SP95 replaced by E10 (many stations sell only E10).
+- 2026-11-03: use case A: detail card per station (pump price, refill, trip fuel and wear), comparison of two stations (table and both routes on the map). Fuel on fast roads stays at the ORS average speed, consistent with trip times (user choice).
 
 ## 8. Setting up a machine
 

@@ -58,3 +58,24 @@ footer { margin-top: 16px; font-size: 11px; color: #7a8492; }
   #panel { width: 100%; height: 55%; border-right: 0; border-top: 1px solid #dde2e8; }
   #map { height: 45%; flex: none; }
 }
+.detail { background: #fff; border: 1px solid #dde2e8; border-radius: 8px; padding: 10px; margin: 8px 0; }
+.detail-head { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
+.rank { flex: none; width: 26px; height: 26px; border-radius: 13px; background: #1f5fbf; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.bill { display: grid; grid-template-columns: 1fr auto; margin: 0 0 6px; font-size: 13px; row-gap: 3px; column-gap: 8px; }
+.bill dd { margin: 0; text-align: right; white-space: nowrap; }
+.bill .sub { border-top: 1px dashed #c9d1db; padding-top: 3px; font-weight: 600; }
+.bill .tot { border-top: 1px solid #1d2430; padding-top: 4px; font-weight: 800; font-size: 15px; }
+.good { color: #2e9e5b; font-weight: 600; }
+.cmp-bar { align-items: center; margin: 6px 0; }
+.cmp-bar button { flex: none; }
+.cmp-bar button:not(:disabled) { background: #1f5fbf; color: #fff; border-color: #1f5fbf; }
+.out table.compare { margin: 8px 0; background: #fff; border: 1px solid #dde2e8; border-radius: 8px; font-size: 13px; }
+.compare th { font-weight: 600; color: #3a4452; }
+.compare thead th { vertical-align: bottom; }
+.compare tr.tot td, .compare tr.tot th { border-top: 1px solid #1d2430; }
+.compare tr.diff td { font-weight: 700; }
+.out td input.cmp { width: auto; }
+.out table.compare { table-layout: fixed; width: 100%; }
+.compare th:first-child { width: 34%; }
+.compare td, .compare thead th { word-wrap: break-word; }
+.compare thead th.num { white-space: normal; }

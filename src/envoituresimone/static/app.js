@@ -169,26 +169,36 @@ async function run(btn, out, fn) {
 
 // ---------- use case A: refill ----------
 let refillData = null;
+let compareIds = [];                       // up to 2 stations ticked for comparison
+const CMP_COL = ["#1f5fbf", "#e07b00"];    // route colours of the two compared stations
+const p3 = (x) => `${x.toLocaleString("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} €/L`;
+const tripEur = (s) => s.detour_fuel_eur + s.wear_eur;
+const rankOf = (s) => refillData.stations.indexOf(s) + 1;
+const stationById = (id) => refillData?.stations.find((x) => x.id === id);
+
 $("go-refill").addEventListener("click", () => run($("go-refill"), $("refill-out"), async () => {
   const home = await ensurePoint("home");
   const d = await post("/api/refill", { ...common(), home, litres: +$("litres").value, radius_km: +$("radius").value });
-  refillData = d; layers.refill.clearLayers(); layers.leg.clearLayers();
+  refillData = d; compareIds = []; layers.refill.clearLayers(); layers.leg.clearLayers();
   const out = $("refill-out");
   if (!d.stations.length) { out.innerHTML = notes(d.notes, "warn"); return; }
-  const best = d.stations[0], worst = d.stations[d.stations.length - 1];
   const rows = d.stations.map((s, i) => `<tr class="station ${i === 0 ? "best" : ""}" data-id="${s.id}">
+      <td><input type="checkbox" class="cmp" data-id="${s.id}" title="Ajouter à la comparaison"></td>
       <td>${i + 1}</td>
       <td>${esc(s.address)}<br><span class="muted">${esc(s.city)} · ${km(s.one_way_km)}${s.estimated ? " ≈" : ""}${s.id === d.cheapest_pump_id ? " · pompe la moins chère" : ""}</span></td>
       <td class="num">${s.price.toFixed(3)}</td>
-      <td class="num"><b>${eur(s.total_eur)}</b><br><span class="muted">${s.eur_per_litre_real.toFixed(3)} €/L</span></td></tr>`).join("");
+      <td class="num">${eur(tripEur(s))}</td>
+      <td class="num"><b>${eur(s.total_eur)}</b></td></tr>`).join("");
   out.innerHTML = `
-    <div class="verdict"><div class="big">${eur(best.total_eur)}</div>
-      ${esc(best.address)}, ${esc(best.city)} — ${km(best.one_way_km)} (aller)<br>
-      <span class="muted">plein ${eur(best.fuel_bought_eur)} + trajet ${eur(best.detour_fuel_eur)} + usure ${eur(best.wear_eur)}
-      · ${eur(worst.total_eur - best.total_eur)} de moins que la plus chère des ${d.stations.length}</span></div>
     ${notes(d.notes)}
-    <p class="muted">${d.found} stations trouvées, ${d.routed} classées par itinéraire réel (aller-retour).</p>
-    <table><thead><tr><th>#</th><th>Station</th><th class="num">€/L</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>`;
+    <div id="refill-detail"></div>
+    <div class="row cmp-bar">
+      <span class="muted" id="cmp-hint">Cochez 2 stations pour les comparer.</span>
+      <button id="cmp-go" class="small" disabled>Comparer (0/2)</button>
+    </div>
+    <div id="refill-compare"></div>
+    <p class="muted">${d.found} stations trouvées, ${d.routed} classées par itinéraire réel. Trajet = aller-retour (carburant + usure).</p>
+    <table><thead><tr><th></th><th>#</th><th>Station</th><th class="num">Pompe €/L</th><th class="num">Trajet</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>`;
   const n = d.stations.length;
   d.stations.forEach((s, i) => {
     const t = n > 1 ? i / (n - 1) : 0, col = `hsl(${140 - 140 * t},65%,40%)`;
@@ -197,21 +207,87 @@ $("go-refill").addEventListener("click", () => run($("go-refill"), $("refill-out
       .on("click", () => selectStation(s.id)).addTo(layers.refill);
   });
   map.fitBounds(L.latLngBounds([[home.lat, home.lon], ...d.stations.map((s) => [s.lat, s.lon])]).pad(0.1));
-  out.querySelectorAll("tr.station").forEach((tr) => tr.addEventListener("click", () => selectStation(tr.dataset.id)));
-  selectStation(best.id, false);
+  out.querySelectorAll("tr.station").forEach((tr) => tr.addEventListener("click", (e) => {
+    if (!e.target.classList.contains("cmp")) selectStation(tr.dataset.id);
+  }));
+  out.querySelectorAll("input.cmp").forEach((cb) => cb.addEventListener("change", () => toggleCompare(cb.dataset.id, cb.checked)));
+  $("cmp-go").addEventListener("click", showCompare);
+  selectStation(d.stations[0].id, false);
 }));
 
-async function selectStation(id, fit = true) {
-  const s = refillData?.stations.find((x) => x.id === id); if (!s) return;
-  document.querySelectorAll("tr.station").forEach((tr) => tr.classList.toggle("sel", tr.dataset.id === id));
-  layers.leg.clearLayers();
+function detailHtml(s) {
+  const best = refillData.stations[0], diff = s.total_eur - best.total_eur;
+  return `<div class="detail">
+    <div class="detail-head"><span class="rank">${rankOf(s)}</span>
+      <div><b>${esc(s.address)}</b>, ${esc(s.city)}<br>
+      <span class="muted">${km(s.one_way_km)} et ${hm(s.one_way_hours)} (aller)${s.estimated ? " · distance estimée" : ""}${s.updated ? ` · prix du ${new Date(s.updated).toLocaleDateString("fr-FR")}` : ""}</span></div></div>
+    <dl class="bill">
+      <dt>Prix à la pompe</dt><dd>${p3(s.price)}</dd>
+      <dt>Plein : ${s.litres_bought.toLocaleString("fr-FR")} L × ${s.price.toLocaleString("fr-FR", { minimumFractionDigits: 3 })} €</dt><dd>${eur(s.fuel_bought_eur)}</dd>
+      <dt>Trajet A/R ${km(2 * s.one_way_km)} : carburant (${s.detour_litres.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} L)</dt><dd>${eur(s.detour_fuel_eur)}</dd>
+      <dt>Trajet A/R : usure</dt><dd>${eur(s.wear_eur)}</dd>
+      <dt class="sub">Coût du trajet</dt><dd class="sub">${eur(tripEur(s))}</dd>
+      <dt class="tot">Total</dt><dd class="tot">${eur(s.total_eur)}</dd>
+      <dt>Coût réel par litre</dt><dd>${p3(s.eur_per_litre_real)}</dd>
+    </dl>
+    <div class="${diff < 0.005 ? "good" : "muted"}">${diff < 0.005 ? "Option la moins chère." : `+${eur(diff)} par rapport à la meilleure option (n° 1).`}</div>
+  </div>`;
+}
+
+async function legGeometry(s) {
   const h = points.home;
-  let geom = [[h.lat, h.lon], [s.lat, s.lon]], dashed = true;
   if (CFG.routing) {
-    try { geom = (await post("/api/leg", { a: h, b: { lat: s.lat, lon: s.lon } })).geometry; dashed = false; } catch { /* straight line */ }
+    try { return { geom: (await post("/api/leg", { a: h, b: { lat: s.lat, lon: s.lon } })).geometry, dashed: false }; } catch { /* straight line */ }
   }
-  L.polyline(geom, { color: "#1f5fbf", weight: 5, opacity: 0.8, dashArray: dashed ? "6 8" : null }).addTo(layers.leg);
-  if (fit) map.fitBounds(L.latLngBounds(geom).pad(0.2));
+  return { geom: [[h.lat, h.lon], [s.lat, s.lon]], dashed: true };
+}
+
+async function drawLegs(stations, fit) {
+  layers.leg.clearLayers();
+  const legs = await Promise.all(stations.map(legGeometry));
+  legs.forEach(({ geom, dashed }, i) => L.polyline(geom, {
+    color: stations.length > 1 ? CMP_COL[i] : CMP_COL[0], weight: 5, opacity: 0.85, dashArray: dashed ? "6 8" : null,
+  }).bindTooltip(`${rankOf(stations[i])}. ${esc(stations[i].address)}`).addTo(layers.leg));
+  if (fit) map.fitBounds(L.latLngBounds(legs.flatMap((l) => l.geom)).pad(0.2));
+}
+
+async function selectStation(id, fit = true) {
+  const s = stationById(id); if (!s) return;
+  document.querySelectorAll("tr.station").forEach((tr) => tr.classList.toggle("sel", tr.dataset.id === id));
+  $("refill-detail").innerHTML = detailHtml(s);
+  $("refill-compare").innerHTML = "";
+  await drawLegs([s], fit);
+}
+
+function toggleCompare(id, on) {
+  compareIds = compareIds.filter((x) => x !== id);
+  if (on) compareIds.push(id);
+  if (compareIds.length > 2) compareIds.shift();      // keep the 2 latest ticks
+  document.querySelectorAll("input.cmp").forEach((cb) => (cb.checked = compareIds.includes(cb.dataset.id)));
+  $("cmp-go").disabled = compareIds.length !== 2;
+  $("cmp-go").textContent = `Comparer (${compareIds.length}/2)`;
+}
+
+async function showCompare() {
+  const [a, b] = compareIds.map(stationById).sort((x, y) => x.total_eur - y.total_eur);
+  const cheap = a.total_eur;
+  const line = (label, f, cls = "") => `<tr class="${cls}"><th>${label}</th><td class="num">${f(a)}</td><td class="num">${f(b)}</td></tr>`;
+  const head = (s, i) => `<th class="num"><span class="swatch" style="background:${CMP_COL[i]}"></span> n° ${rankOf(s)}<br><span class="muted">${esc(s.address)}</span></th>`;
+  $("refill-compare").innerHTML = `<table class="compare">
+    <thead><tr><th></th>${head(a, 0)}${head(b, 1)}</tr></thead><tbody>
+    ${line("Prix pompe", (s) => p3(s.price))}
+    ${line("Distance A/R", (s) => km(2 * s.one_way_km))}
+    ${line("Carburant acheté", (s) => eur(s.fuel_bought_eur))}
+    ${line("Trajet : carburant", (s) => eur(s.detour_fuel_eur))}
+    ${line("Trajet : usure", (s) => eur(s.wear_eur))}
+    ${line("Coût du trajet", (s) => eur(tripEur(s)))}
+    ${line("Total", (s) => `<b>${eur(s.total_eur)}</b>`, "tot")}
+    ${line("Coût réel par litre", (s) => p3(s.eur_per_litre_real))}
+    ${line("Écart", (s) => s.total_eur - cheap < 0.005 ? "0 €" : `+${eur(s.total_eur - cheap)}`, "diff")}
+    </tbody></table>`;
+  $("refill-detail").innerHTML = "";
+  document.querySelectorAll("tr.station").forEach((tr) => tr.classList.toggle("sel", compareIds.includes(tr.dataset.id)));
+  await drawLegs([a, b], true);
 }
 
 // ---------- use case B: trip ----------
