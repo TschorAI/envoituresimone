@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>En voiture Simone — le vrai coût du plein et du trajet</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<aside id="panel">
+  <header>
+    <h1>En voiture Simone</h1>
+    <p class="sub">Le vrai coût d'un plein ou d'un trajet : carburant, usure, péages.</p>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="refill" class="active">Faire le plein</button>
+    <button data-tab="trip">Trajet A → B</button>
+  </nav>
+
+  <div id="routing-warning" class="note warn" hidden>
+    Pas de clé OpenRouteService (<code>ORS_API_KEY</code> dans <code>.env</code>) :
+    distances à vol d'oiseau estimées, trajets A → B indisponibles.
+  </div>
+
+  <section id="tab-refill" class="tab">
+    <label>Domicile
+      <div class="addr">
+        <input id="home" placeholder="Adresse, ou clic sur la carte" autocomplete="off">
+        <button class="pick" data-target="home" title="Choisir sur la carte">◎</button>
+        <button id="locate" title="Ma position">⌖</button>
+      </div>
+    </label>
+    <div class="row">
+      <label>Litres à acheter <input id="litres" type="number" value="40" min="1" max="200"></label>
+      <label>Rayon (km) <input id="radius" type="number" value="10" min="1" max="50"></label>
+    </div>
+    <button class="go" id="go-refill">Trouver la station la moins chère</button>
+    <div id="refill-out" class="out"></div>
+  </section>
+
+  <section id="tab-trip" class="tab" hidden>
+    <label>Départ
+      <div class="addr">
+        <input id="start" placeholder="Adresse, ou clic sur la carte" autocomplete="off">
+        <button class="pick" data-target="start" title="Choisir sur la carte">◎</button>
+      </div>
+    </label>
+    <label>Arrivée
+      <div class="addr">
+        <input id="end" placeholder="Adresse, ou clic sur la carte" autocomplete="off">
+        <button class="pick" data-target="end" title="Choisir sur la carte">◎</button>
+      </div>
+    </label>
+    <div class="row">
+      <label>Prix (€/L) <input id="price" type="number" step="0.001" placeholder="auto"></label>
+      <label>Péage (€/km) <input id="toll" type="number" step="0.01" value="0.11"></label>
+    </div>
+    <button class="go" id="go-trip">Comparer avec et sans péage</button>
+    <div id="trip-out" class="out"></div>
+  </section>
+
+  <details class="settings" open>
+    <summary>Véhicule</summary>
+    <div class="row">
+      <label>Carburant <select id="fuel"></select></label>
+      <label class="check"><input id="wear-on" type="checkbox" checked> Usure
+        <input id="wear" type="number" step="0.01" value="0.10"> €/km</label>
+    </div>
+    <details class="curve">
+      <summary>Consommation selon la vitesse</summary>
+      <svg id="curve-chart" viewBox="0 0 300 120"></svg>
+      <table id="curve-table"><thead><tr><th>km/h</th><th>L/100 km</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="row">
+        <button id="curve-add" class="small">+ point</button>
+        <button id="curve-reset" class="small">Valeurs par défaut</button>
+      </div>
+    </details>
+  </details>
+
+  <footer>Prix : prix-carburants.gouv.fr · Adresses : Géoplateforme IGN · Itinéraires : OpenRouteService / © OpenStreetMap</footer>
+</aside>
+<main id="map"></main>
+<ul id="suggest" hidden></ul>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

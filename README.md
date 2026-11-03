@@ -11,13 +11,16 @@
 
 ## In short
 
-_To be written, for someone who is not technical: the question, in two or three plain sentences,
-and the answer so far (a few numbers at most)._
+Is the cheapest pump really the cheapest refill, once you count the drive there? And is the
+toll-free road really cheaper than the motorway, once you count fuel and wear? The app answers
+both for any French address, with today's prices. First runs around Paris: the cheapest diesel
+pump was not the cheapest refill (about 1 EUR more, trip included).
 
 ## What is here
 
-_To be written: the deliverables a person would open (presentations, reports, figures, result
-tables), one line each, with where to find them._
+- **The web app** (on this computer for now): a map where you enter your home or a trip, then see
+  the stations ranked by real cost, or the motorway and toll-free routes side by side. Ask Claude
+  Code to start it.
 
 ## Get started
 

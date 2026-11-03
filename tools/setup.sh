@@ -14,8 +14,8 @@
 # data/ out/ tasks/, .env (empty variable names only, never values), whatever CHECK writes.
 
 # ---- the project's settings: edit these two lines (and list them in PROJECT.md, sections 2 and 8)
-ENV_VARS=""   # space-separated names the project needs in .env, e.g. "PREDICTION_DB_HOSTNAME PREDICTION_DB_PORT"
-CHECK=""      # one short command that fails if a result changes, e.g. "uv run python src/check.py"
+ENV_VARS="ORS_API_KEY"   # space-separated names the project needs in .env, e.g. "PREDICTION_DB_HOSTNAME PREDICTION_DB_PORT"
+CHECK="uv run pytest -q"      # one short command that fails if a result changes, e.g. "uv run python src/check.py"
 # ----
 
 set -uo pipefail

@@ -2,7 +2,22 @@
 name = "envoituresimone"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = ["genau-kit"]
+dependencies = [
+    "fastapi>=0.162.0",
+    "genau-kit",
+    "httpx>=0.28.1",
+    "python-dotenv>=1.2.4",
+    "uvicorn[standard]>=0.54.0",
+]
 
 [tool.uv.sources]
 genau-kit = { git = "https://github.com/Genau-AI/skills", subdirectory = "kit" }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["src/tests"]

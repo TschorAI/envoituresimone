@@ -23,7 +23,10 @@ External inputs, all read-only:
 
 | Input | Through | Cost |
 |---|---|---|
-| _none yet_ | | |
+| Live fuel prices (prix-carburants.gouv.fr instant flow, `data.economie.gouv.fr` API) | `connectors/prices.py` | Free, no key. One call per 100 stations, cached 10 min in memory. |
+| Géoplateforme IGN address search, completion, reverse (`data.geopf.fr/geocodage`) | `connectors/geocode.py` | Free, no key. Cached 24 h in memory. |
+| OpenRouteService directions and matrix (`api.openrouteservice.org`, OSM) | `connectors/routing.py` | Free key, 2000 directions and 500 matrix calls a day. Use case A: 1 matrix call per search + 1 directions call per station clicked. Use case B: 2 directions calls. |
+| OpenStreetMap tiles, Leaflet 1.9.4 (unpkg CDN) | the browser | Free, fair use. |
 
 Note the cost of each: a web download (cached or not), a database read, a remote job, anything
 that touches production. Mark what must never run by default.
@@ -33,7 +36,7 @@ ones the project needs; `tools/setup.sh` checks exactly these (its `ENV_VARS` li
 
 | Variable | For |
 |---|---|
-| _none yet_ | |
+| `ORS_API_KEY` | OpenRouteService routing. Without it, use case A falls back on crow-fly distance x 1.3 at 40 km/h, and use case B is off. |
 
 ## 3. The code
 
@@ -42,11 +45,24 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 
 | Script or module | Does | Reads | Writes | Run time |
 |---|---|---|---|---|
-| _none yet_ | | | | |
+| `src/app.py` | Starts the web app on http://127.0.0.1:8000 (`--port N`, `--reload`) | the package below, `.env` | nothing | stays up |
+| `src/envoituresimone/cost.py` | The cost model, pure functions (no I/O): consumption curve, route cost, refill cost | nothing | nothing | instant |
+| `src/envoituresimone/api.py` | FastAPI app: `/api/refill` (A), `/api/trip` (B), `/api/leg`, `/api/complete`, `/api/geocode`, `/api/reverse`, `/api/config`, and the page | connectors | nothing | 1-5 s a request |
+| `src/envoituresimone/connectors/` | One HTTP client per service (prices, geocode, routing) | the services of section 2 | nothing | network-bound |
+| `src/envoituresimone/static/` | The page: Leaflet map, address autocomplete, map picking, curve editor, results | `/api/*` | browser localStorage (curve, points, fuel) | - |
+| `src/tests/test_cost.py` | Checks the cost model on hand-computed cases (`uv run pytest`) | nothing | nothing | < 1 s |
+
+The split is meant for the Dataiku + n8n version: `cost.py` moves as-is into a Dataiku Python
+recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 
 ## 4. Conventions
 
-_To be written: time zone and clock, units, naming, any rule a result depends on._
+- Units: km, hours, km/h, L/100 km, EUR/L, EUR. Points are (lat, lon) in the code, [lon, lat] only at the ORS boundary.
+- Fuel keys follow the price dataset prefixes: `sp95`, `gazole`.
+- Consumption: linear interpolation on the speed curve, flat beyond its ends. Each route step of ORS is one leg at its own average speed.
+- Use case A: round trip = 2 x the one-way road route. Fuel burnt on the way is priced at the station's price. Only the 25 best stations on a crow-fly pre-ranking are routed (quota).
+- Use case B: tolls = tolled km x 0.11 EUR/km (ORS `tollways` extra). Tolled stretches under 15 km get a warning. Fuel price: user input, or the median of stations within 10 km of the start (30 km if none).
+- Wear: 0.10 EUR/km, on by default, off when unchecked.
 
 ## 5. Boundaries: what may change
 
@@ -59,11 +75,17 @@ _To be written: time zone and clock, units, naming, any rule a result depends on
 
 ## 6. Known limits and open questions
 
-_None yet._
+- Many stations sell only E10, not SP95: they do not show for SP95. Open question: offer E10 (or "SP95 or E10").
+- Tolls are a flat per-km estimate; real tariffs differ by operator and class, and urban tunnels (Duplex A86) are far above it.
+- ORS's toll-free route may still contain tolled parts when no alternative exists (a note says so).
+- The round trip assumes the way back equals the way there (one-way streets ignored).
+- Default consumption curves are generic values for an average compact car, not measured.
+- Stations' opening hours and price age (`updated`) are not yet used in the ranking.
 
 ## 7. History
 
 - 2026-11-03: project created.
+- 2026-11-03: local web app v1: both use cases, live prices, geocoding, ORS routing, Leaflet map.
 
 ## 8. Setting up a machine
 
@@ -73,8 +95,9 @@ GitHub sign-in, pulls `sources/ data/ out/ tasks/` from the drive, runs `uv sync
 fills the values), then runs the project's check (its `CHECK` line) when there is one.
 Never write credential values into `.env` yourself, and never print them.
 
-The check: _none yet. When the project has a result to protect, put one short command in
-`CHECK` that fails if the result changes (about ten seconds, no remote jobs)._
+The check: `uv run pytest -q` (cost model tests, no network).
+
+Run the app: `uv run python src/app.py`, then open http://127.0.0.1:8000.
 
 ## 9. Index: every file
 
@@ -92,7 +115,15 @@ The check: _none yet. When the project has a result to protect, put one short co
 
 ### Documents and code (`src/` -> `out/`)
 
-_None yet._
+- `src/app.py` — starts the local web app.
+- `src/envoituresimone/cost.py` — cost model (consumption curve, refill cost, route cost).
+- `src/envoituresimone/api.py` — web API and page server.
+- `src/envoituresimone/connectors/prices.py` — live station prices around a point.
+- `src/envoituresimone/connectors/geocode.py` — Géoplateforme address search, completion, reverse.
+- `src/envoituresimone/connectors/routing.py` — OpenRouteService directions (tolls / no tolls) and matrix.
+- `src/envoituresimone/connectors/_http.py` — shared HTTP client and in-memory cache.
+- `src/envoituresimone/static/index.html`, `app.js`, `style.css` — the map page.
+- `src/tests/test_cost.py` — cost model tests.
 
 ### Tools
 
