@@ -261,8 +261,9 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
-    { name = "genau-kit" },
     { name = "httpx" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "python-dotenv" },
@@ -273,12 +274,15 @@ dependencies = [
 dev = [
     { name = "pytest" },
 ]
+docs = [
+    { name = "genau-kit" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.162.0" },
-    { name = "genau-kit", git = "https://github.com/Genau-AI/skills?subdirectory=kit" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "numpy", specifier = ">=2.4.6" },
     { name = "pandas", specifier = ">=3.1.0" },
     { name = "pyarrow", specifier = ">=26.0.1" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
@@ -287,6 +291,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.2.0" }]
+docs = [{ name = "genau-kit", git = "https://github.com/Genau-AI/skills?subdirectory=kit" }]
 
 [[package]]
 name = "fastapi"

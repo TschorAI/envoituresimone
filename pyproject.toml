@@ -4,8 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.162.0",
-    "genau-kit",
     "httpx>=0.28.1",
+    "numpy>=2.4.6",
     "pandas>=3.1.0",
     "pyarrow>=26.0.1",
     "python-dotenv>=1.2.4",
@@ -19,6 +19,14 @@ genau-kit = { git = "https://github.com/Genau-AI/skills", subdirectory = "kit" }
 dev = [
     "pytest>=9.2.0",
 ]
+# Document and figure tools (private GENAU repository): installed locally, left out of the
+# deployed image (`uv sync --no-default-groups`).
+docs = [
+    "genau-kit",
+]
+
+[tool.uv]
+default-groups = ["dev", "docs"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

@@ -1,7 +1,11 @@
 # The web app: a JSON API over the connectors and the cost model, plus the map page.
-# Reads: the connectors (live prices, geocoding, routing), static/. Writes: nothing.
+# Reads: the connectors (prices, geocoding, routing), static/. Writes: <DATA_DIR>/prices/, through
+# the hourly snapshot task (off with PRICE_REFRESH=0).
 from __future__ import annotations
 
+import asyncio
+import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -10,11 +14,22 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import cost
+from . import cost, snapshot
 from .connectors import geocode, prices, routing
 
 STATIC = Path(__file__).resolve().parent / "static"
-app = FastAPI(title="envoituresimone")
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    """Hourly price snapshot in the background, unless PRICE_REFRESH=0."""
+    task = asyncio.create_task(snapshot.refresh_loop()) if os.environ.get("PRICE_REFRESH", "1") != "0" else None
+    yield
+    if task:
+        task.cancel()
+
+
+app = FastAPI(title="envoituresimone", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 

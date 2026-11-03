@@ -27,7 +27,7 @@ External inputs, all read-only:
 
 | Input | Through | Cost |
 |---|---|---|
-| Fuel prices (prix-carburants.gouv.fr instant flow, `data.economie.gouv.fr`) | `tools/fetch_prices.py` (hourly bulk parquet export, ~600 KB, 1 call) -> `data/prices/`; `connectors/prices.py` reads it, and calls the live API only if the snapshot is missing or older than 3 h | Free, no key. |
+| Fuel prices (prix-carburants.gouv.fr instant flow, `data.economie.gouv.fr`) | the app's hourly snapshot (`snapshot.py`, bulk parquet export, ~600 KB, 1 call at HH:07) -> `data/prices/`; `connectors/prices.py` reads it, and calls the live API only if the snapshot is missing or older than 3 h | Free, no key. |
 | Géoplateforme IGN address search, completion, reverse (`data.geopf.fr/geocodage`) | `connectors/geocode.py` | Free, no key. Cached 24 h in memory. |
 | OpenRouteService directions and matrix (`api.openrouteservice.org`, OSM) | `connectors/routing.py` | Free key, 2000 directions and 500 matrix calls a day. Use case A: 1 matrix call per search + 1 directions call per station clicked. |
 | OpenStreetMap tiles, Leaflet 1.9.4 (unpkg CDN) | the browser | Free, fair use. |
@@ -53,8 +53,8 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 | `src/envoituresimone/cost.py` | The cost model, pure functions (no I/O): consumption curve, refill cost, route cost (route cost kept for v2) | nothing | nothing | instant |
 | `src/envoituresimone/api.py` | FastAPI app: `/api/refill` (A), `/api/leg`, `/api/complete`, `/api/geocode`, `/api/reverse`, `/api/config`, and the page | connectors | nothing | 1-5 s a request |
 | `src/envoituresimone/connectors/` | One client per service (prices from the snapshot or live, geocode, routing) | the services of section 2, `data/prices/latest.parquet` | nothing | network-bound |
-| `tools/fetch_prices.py` | Hourly snapshot of all station prices, plus a history of every price change | `data.economie.gouv.fr` | `data/prices/latest.parquet`, `data/prices/history/YYYY-MM.parquet` | ~3 s |
-| `tools/schedule_prices.sh` | Installs the cron job that runs `fetch_prices.py` at minute 7 of every hour (`--remove` to take it off) | crontab | crontab | instant |
+| `src/envoituresimone/snapshot.py` | Price snapshot of all stations plus a history of every price change; the app runs it at start (if the snapshot is over 1 h old) and at HH:07 every hour (`PRICE_REFRESH=0` turns it off) | `data.economie.gouv.fr` | `<DATA_DIR>/prices/latest.parquet`, `<DATA_DIR>/prices/history/YYYY-MM.parquet` | ~3 s |
+| `tools/fetch_prices.py` | Takes one snapshot by hand | as above | as above | ~3 s |
 | `src/envoituresimone/static/` | The page: Leaflet map, address autocomplete, map picking, curve editor, results | `/api/*` | browser localStorage (curve, points, fuel) | - |
 | `src/tests/test_cost.py` | Checks the cost model on hand-computed cases (`uv run pytest`) | nothing | nothing | < 1 s |
 
@@ -95,6 +95,7 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 - 2026-11-03: A -> B trip removed from the app (flat toll estimate too rough); v2 plan in `src/_v2-trip.md`.
 - 2026-11-03: hourly price snapshot with history (`tools/fetch_prices.py`); prices older than 7 days left out.
 - 2026-11-03: Dataiku and n8n dropped from this project; their tests moved elsewhere (`src/_tool-tests.md`).
+- 2026-11-03: the app refreshes prices hourly by itself (for Railway: a cron service would not share the disk); Dockerfile; genau-kit moved to the `docs` dependency group.
 
 ## 8. Setting up a machine
 
@@ -108,8 +109,18 @@ The check: `uv run pytest -q` (cost model tests, no network).
 
 Run the app: `uv run python src/app.py`, then open http://127.0.0.1:8000.
 
-Prices: `bash tools/schedule_prices.sh` once per machine installs the hourly snapshot (cron). The
-log is `data/prices/fetch.log`. When the machine is off, the app falls back on the live API.
+Prices: the app refreshes them by itself every hour while it runs (log lines "price snapshot").
+If the snapshot is missing or over 3 h old, searches use the live API.
+
+Deployment (Railway): `Dockerfile` at the root, no start command needed (the image runs
+`python src/app.py` on `0.0.0.0:$PORT`). Set the variable `ORS_API_KEY`, and mount a volume on
+`/app/data` so the snapshot and its history survive redeploys. Run one replica only: each
+replica would refresh on its own. The image leaves out `genau-kit` (private GENAU repository,
+`docs` dependency group): `uv sync --no-default-groups`.
+
+Other environment variables, all optional: `HOST` (default 127.0.0.1, 0.0.0.0 in the image),
+`PORT` (8000), `DATA_DIR` (the project's `data/`, `/app/data` in the image), `PRICE_REFRESH`
+(`0` turns the hourly snapshot off).
 
 ## 9. Index: every file
 
@@ -133,6 +144,7 @@ log is `data/prices/fetch.log`. When the machine is off, the app falls back on t
 - `src/envoituresimone/connectors/prices.py` — live station prices around a point.
 - `src/envoituresimone/connectors/geocode.py` — Géoplateforme address search, completion, reverse.
 - `src/envoituresimone/connectors/routing.py` — OpenRouteService directions (tolls / no tolls) and matrix.
+- `src/envoituresimone/snapshot.py` — hourly price snapshot and price history (run by the app).
 - `src/envoituresimone/connectors/_http.py` — shared HTTP client and in-memory cache.
 - `src/envoituresimone/static/index.html`, `app.js`, `style.css` — the map page.
 - `src/tests/test_cost.py` — cost model tests.
@@ -142,13 +154,12 @@ log is `data/prices/fetch.log`. When the machine is off, the app falls back on t
 ### Tools
 
 - `tools/setup.sh` — sets the project up on a new machine (section 8).
-- `tools/fetch_prices.py` — hourly price snapshot and price history into `data/prices/`.
-- `tools/schedule_prices.sh` — installs or removes the hourly cron job for `fetch_prices.py`.
+- `Dockerfile`, `.dockerignore` (project root) — the deployed image (section 8).
+- `tools/fetch_prices.py` — takes one price snapshot by hand.
 
 ### Sources and data
 
 - `data/prices/latest.parquet` — every station with its E10 and diesel price, position and update time; replaced hourly.
 - `data/prices/history/YYYY-MM.parquet` — every price change seen (id, fuel, price, updated), one file a month.
-- `data/prices/fetch.log` — one line per hourly run.
 
 Rebuild the documents with `uv run genau-docs`, and a video with `uv run genau-video`.

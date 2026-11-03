@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+*.env
+.env.*
+.claude
+data
+out
+sources
+tasks
+**/__pycache__

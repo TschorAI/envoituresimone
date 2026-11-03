@@ -1,19 +1,18 @@
 # Fuel prices of French stations (prix-carburants.gouv.fr instant flow). Reads the hourly
-# snapshot written by tools/fetch_prices.py; if it is missing or older than MAX_AGE, asks the
+# snapshot (see ../snapshot.py, refreshed hourly by the app); if it is missing or older than MAX_AGE, asks the
 # live data.economie.gouv.fr API instead (cached 10 min in memory). No key.
-# Reads: data/prices/latest.parquet, https://data.economie.gouv.fr. Writes: nothing.
+# Reads: <DATA_DIR>/prices/latest.parquet, https://data.economie.gouv.fr. Writes: nothing.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from .. import snapshot
 from ._http import cached, client, store
 
-ROOT = Path(__file__).resolve().parents[3]
-SNAPSHOT = ROOT / "data" / "prices" / "latest.parquet"
+SNAPSHOT = snapshot.LATEST
 MAX_AGE = timedelta(hours=3)
 URL = ("https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/"
        "prix-des-carburants-en-france-flux-instantane-v2/records")
