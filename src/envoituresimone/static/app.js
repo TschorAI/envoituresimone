@@ -17,7 +17,8 @@ const map = L.map("map").setView([46.6, 2.5], 6);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19, attribution: "© OpenStreetMap",
 }).addTo(map);
-const layers = { refill: L.layerGroup().addTo(map), leg: L.layerGroup().addTo(map) };
+const layers = { refill: L.layerGroup().addTo(map), leg: L.layerGroup().addTo(map), pricemap: L.layerGroup() };
+const canvas = L.canvas({ padding: 0.3 });   // thousands of markers: draw on a canvas, not as DOM nodes
 const PIN = { home: "🏠" };
 
 function setPoint(name, p) {
@@ -96,6 +97,72 @@ async function ensurePoint(name) {
   if (!res.length) throw new Error(`Adresse introuvable : ${q}`);
   setPoint(name, res[0]); return res[0];
 }
+
+// ---------- tabs ----------
+let tab = "refill";
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
+  if (b.dataset.tab === tab) return;
+  tab = b.dataset.tab;
+  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("active", x === b));
+  document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== `tab-${tab}`));
+  const refill = tab === "refill";
+  $("vehicle").hidden = !refill;
+  [layers.refill, layers.leg, markers.home].forEach((l) => l && (refill ? l.addTo(map) : l.remove()));
+  refill ? layers.pricemap.remove() : layers.pricemap.addTo(map);
+  if (!refill) loadPriceMap();
+}));
+
+// ---------- use case C: price map ----------
+let pm = null;   // {data, fuel}
+// green (cheap) -> yellow -> red (dear), on the 5th-95th percentile range so outliers do not flatten it
+const pmColor = (p, s) => { const t = Math.min(1, Math.max(0, (p - s.p05) / (s.p95 - s.p05 || 1))); return `hsl(${120 - 120 * t},75%,42%)`; };
+const pmRadius = () => (map.getZoom() < 8 ? 3.5 : map.getZoom() < 11 ? 5 : 7);
+const p3fr = (x) => x.toLocaleString("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+async function loadPriceMap() {
+  const fuelKey = $("pm-fuel").value;
+  if (pm && pm.fuel === fuelKey) { renderPmList(); return; }
+  $("pm-out").innerHTML = `<div class="note">Chargement des stations…</div>`;
+  const r = await fetch(`/api/price-map?fuel=${fuelKey}`);
+  const d = await r.json();
+  if (!r.ok) { $("pm-out").innerHTML = `<div class="note err">${esc(d.detail || r.statusText)}</div>`; return; }
+  pm = { data: d, fuel: fuelKey };
+  layers.pricemap.clearLayers();
+  const s = d.stats, st = d.stations;
+  for (let i = 0; i < st.id.length; i++) {
+    L.circleMarker([st.lat[i], st.lon[i]], { renderer: canvas, radius: pmRadius(), weight: 0.5, color: "#fff", fillColor: pmColor(st.price[i], s), fillOpacity: 0.9 })
+      .bindTooltip(() => `<b>${p3fr(st.price[i])} €/L</b><br>${esc(st.address[i])}, ${esc(st.city[i])}<br><span class="muted">${new Date(st.updated[i]).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</span>`)
+      .addTo(layers.pricemap);
+  }
+  const grad = [0, 0.25, 0.5, 0.75, 1].map((t) => `hsl(${120 - 120 * t},75%,42%)`).join(",");
+  $("pm-legend").innerHTML = `<div class="pm-bar" style="background:linear-gradient(to right,${grad})"></div>
+    <div class="pm-scale"><span>≤ ${p3fr(s.p05)}</span><span>médiane ${p3fr(s.median)}</span><span>≥ ${p3fr(s.p95)} €/L</span></div>
+    <div class="pm-meta">${d.count.toLocaleString("fr-FR")} stations, prix relevés le ${new Date(d.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}.
+    De ${p3fr(s.min)} à ${p3fr(s.max)} €/L.${d.stale_excluded ? ` ${d.stale_excluded} stations écartées (prix de plus de ${d.max_price_age_days} jours).` : ""}</div>`;
+  if (map.getZoom() > 7 && !map.getBounds().contains([46.6, 2.5])) map.setView([46.6, 2.5], 6);
+  renderPmList();
+}
+
+// the 10 cheapest stations in the visible part of the map
+function renderPmList() {
+  if (!pm || tab !== "pricemap") return;
+  const st = pm.data.stations, b = map.getBounds(), idx = [];
+  for (let i = 0; i < st.id.length; i++) if (b.contains([st.lat[i], st.lon[i]])) idx.push(i);
+  idx.sort((i, j) => st.price[i] - st.price[j]);
+  const rows = idx.slice(0, 10).map((i, k) => `<tr class="pm-row" data-i="${i}"><td>${k + 1}</td>
+      <td>${esc(st.address[i])}<br><span class="muted">${esc(st.city[i])}</span></td>
+      <td class="num"><span class="pm-dot" style="background:${pmColor(st.price[i], pm.data.stats)}"></span><b>${p3fr(st.price[i])}</b></td></tr>`).join("");
+  $("pm-out").innerHTML = idx.length
+    ? `<p class="muted">Les moins chères dans la zone affichée (${idx.length.toLocaleString("fr-FR")} stations) :</p>
+       <table><thead><tr><th>#</th><th>Station</th><th class="num">€/L</th></tr></thead><tbody>${rows}</tbody></table>`
+    : `<p class="muted">Aucune station dans la zone affichée.</p>`;
+  $("pm-out").querySelectorAll("tr.pm-row").forEach((tr) => tr.addEventListener("click", () => {
+    const i = +tr.dataset.i; map.setView([st.lat[i], st.lon[i]], Math.max(map.getZoom(), 14));
+  }));
+}
+map.on("moveend", renderPmList);
+map.on("zoomend", () => { if (pm) { const r = pmRadius(); layers.pricemap.eachLayer((m) => m.setRadius(r)); } });
+$("pm-fuel").addEventListener("change", loadPriceMap);
 
 // ---------- consumption curve ----------
 const fuel = () => $("fuel").value;
@@ -287,6 +354,7 @@ async function showCompare() {
   $("fuel").innerHTML = Object.entries(CFG.fuels).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
   $("fuel").value = CFG.fuels[localStorage.getItem("fuel")] ? localStorage.getItem("fuel") : "e10";
   $("fuel").addEventListener("change", () => { localStorage.setItem("fuel", fuel()); renderCurve(); });
+  $("pm-fuel").innerHTML = $("fuel").innerHTML; $("pm-fuel").value = $("fuel").value;
   $("wear").value = CFG.wear_eur_km;
   $("routing-warning").hidden = CFG.routing;
   renderCurve();

@@ -51,11 +51,11 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 |---|---|---|---|---|
 | `src/app.py` | Starts the web app on http://127.0.0.1:8000 (`--port N`, `--reload`) | the package below, `.env` | nothing | stays up |
 | `src/envoituresimone/cost.py` | The cost model, pure functions (no I/O): consumption curve, refill cost, route cost (route cost kept for v2) | nothing | nothing | instant |
-| `src/envoituresimone/api.py` | FastAPI app: `/api/refill` (A), `/api/leg`, `/api/complete`, `/api/geocode`, `/api/reverse`, `/api/config`, and the page | connectors | nothing | 1-5 s a request |
+| `src/envoituresimone/api.py` | FastAPI app: `/api/refill` (A), `/api/price-map` (C), `/api/leg`, `/api/complete`, `/api/geocode`, `/api/reverse`, `/api/config`, and the page | connectors | nothing | 1-5 s a request |
 | `src/envoituresimone/connectors/` | One client per service (prices from the snapshot or live, geocode, routing) | the services of section 2, `data/prices/latest.parquet` | nothing | network-bound |
 | `src/envoituresimone/snapshot.py` | Price snapshot of all stations plus a history of every price change; the app runs it at start (if the snapshot is over 1 h old) and at HH:07 every hour (`PRICE_REFRESH=0` turns it off) | `data.economie.gouv.fr` | `<DATA_DIR>/prices/latest.parquet`, `<DATA_DIR>/prices/history/YYYY-MM.parquet` | ~3 s |
 | `tools/fetch_prices.py` | Takes one snapshot by hand | as above | as above | ~3 s |
-| `src/envoituresimone/static/` | The page: Leaflet map, address autocomplete, map picking, curve editor, results | `/api/*` | browser localStorage (curve, points, fuel) | - |
+| `src/envoituresimone/static/` | The page, two tabs: "Faire le plein" (A: address autocomplete, map picking, curve editor, ranking, detail, comparison) and "Carte des prix" (C: every station coloured by price, cheapest 10 in view) | `/api/*` | browser localStorage (curve, points, fuel) | - |
 | `src/tests/test_cost.py` | Checks the cost model on hand-computed cases (`uv run pytest`) | nothing | nothing | < 1 s |
 
 `cost.py` has no I/O, so the cost model is tested and changed apart from the data services.
@@ -68,6 +68,7 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 - Price timestamps (`updated`) are French local time: the source labels them UTC but they are local. Prices not updated for more than 7 days are left out of the ranking (about 10 % of stations on 2026-11-03; one Paris E10 price dated from August 2025 and ranked first).
 - Use case A: round trip = 2 x the one-way road route. Fuel burnt on the way is priced at the station's price. Only the 25 best stations on a crow-fly pre-ranking are routed (quota).
 - Use case B (A -> B trip) is not in v1: see `src/_v2-trip.md`.
+- Use case C (price map): every station of the snapshot with a price under 7 days old, coloured green -> red on the national 5th-95th percentile range (outliers do not flatten the scale). No live fallback: it needs the snapshot. About 160 KB gzipped per fuel.
 - Wear: 0.10 EUR/km, on by default, off when unchecked.
 
 ## 5. Boundaries: what may change
@@ -96,6 +97,7 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 - 2026-11-03: hourly price snapshot with history (`tools/fetch_prices.py`); prices older than 7 days left out.
 - 2026-11-03: Dataiku and n8n dropped from this project; their tests moved elsewhere (`src/_tool-tests.md`).
 - 2026-11-03: the app refreshes prices hourly by itself (for Railway: a cron service would not share the disk); Dockerfile; genau-kit moved to the `docs` dependency group.
+- 2026-11-03: use case C, the national price map, in a second tab.
 
 ## 8. Setting up a machine
 

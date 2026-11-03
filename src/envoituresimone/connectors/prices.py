@@ -85,6 +85,17 @@ async def _live(lat: float, lon: float, radius_km: float, fuel: str) -> list[dic
     return store(key, out)
 
 
+def all_stations(fuel: str) -> pd.DataFrame | None:
+    """Every station selling `fuel` in the snapshot, columns id, lat, lon, address, city, postcode,
+    price, updated, fetched_at; None if there is no fresh snapshot (no live fallback: too big)."""
+    df = _snapshot()
+    if df is None:
+        return None
+    sel = df[df[f"{fuel}_price"].notna()]
+    return sel[["id", "lat", "lon", "address", "city", "postcode", "fetched_at"]].assign(
+        price=sel[f"{fuel}_price"], updated=sel[f"{fuel}_updated"])
+
+
 async def stations_near(lat: float, lon: float, radius_km: float, fuel: str) -> list[dict]:
     """Stations within `radius_km` that sell `fuel`: [{id, lat, lon, address, city, postcode, price, updated}]."""
     if fuel not in FUELS:

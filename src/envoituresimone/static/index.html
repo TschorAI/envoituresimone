@@ -15,6 +15,11 @@
     <p class="sub">Le vrai coût d'un plein : le carburant acheté, plus le trajet pour aller le chercher.</p>
   </header>
 
+  <nav class="tabs">
+    <button data-tab="refill" class="active">Faire le plein</button>
+    <button data-tab="pricemap">Carte des prix</button>
+  </nav>
+
   <div id="routing-warning" class="note warn" hidden>
     Pas de clé OpenRouteService (<code>ORS_API_KEY</code> dans <code>.env</code>) :
     distances à vol d'oiseau estimées.
@@ -36,8 +41,16 @@
     <div id="refill-out" class="out"></div>
   </section>
 
+  <section id="tab-pricemap" class="tab" hidden>
+    <div class="row">
+      <label>Carburant <select id="pm-fuel"></select></label>
+    </div>
+    <div id="pm-legend"></div>
+    <div id="pm-out" class="out"></div>
+  </section>
 
-  <details class="settings" open>
+
+  <details class="settings" id="vehicle" open>
     <summary>Véhicule</summary>
     <div class="row">
       <label>Carburant <select id="fuel"></select></label>

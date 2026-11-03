@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -30,6 +31,7 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="envoituresimone", lifespan=lifespan)
+app.add_middleware(GZipMiddleware, minimum_size=2000)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 
@@ -145,6 +147,29 @@ async def refill(q: RefillIn):
     return {"stations": ranked, "found": len(stations), "routed": len(candidates),
             "best_id": best["id"], "cheapest_pump_id": cheapest_pump["id"],
             "routing": routing.has_key(), "prices": prices.source(), "notes": notes}
+
+
+@app.get("/api/price-map")
+def price_map(fuel: str = "e10", max_price_age_days: float = 7):
+    """Use case C: every station's price, for the national map. Columnar to keep it small."""
+    _check_fuel(fuel)
+    df = prices.all_stations(fuel)
+    if df is None:
+        raise HTTPException(503, "Le relevé des prix n'est pas encore prêt : réessayez dans une minute.")
+    cutoff = datetime.now() - timedelta(days=max_price_age_days)
+    fresh = df[df["updated"] >= cutoff]
+    q = fresh["price"].quantile([0.05, 0.5, 0.95])
+    return {
+        "fuel": fuel, "at": df["fetched_at"].iloc[0].isoformat(timespec="minutes"),
+        "count": len(fresh), "stale_excluded": len(df) - len(fresh), "max_price_age_days": max_price_age_days,
+        "stats": {"min": float(fresh["price"].min()), "p05": float(q[0.05]), "median": float(q[0.5]),
+                  "p95": float(q[0.95]), "max": float(fresh["price"].max())},
+        "stations": {
+            "id": fresh["id"].tolist(), "lat": fresh["lat"].round(5).tolist(), "lon": fresh["lon"].round(5).tolist(),
+            "price": fresh["price"].tolist(), "address": fresh["address"].tolist(), "city": fresh["city"].tolist(),
+            "updated": fresh["updated"].dt.strftime("%Y-%m-%dT%H:%M").tolist(),
+        },
+    }
 
 
 @app.post("/api/leg")

@@ -66,6 +66,12 @@ footer { margin-top: 16px; font-size: 11px; color: #7a8492; }
 .bill .sub { border-top: 1px dashed #c9d1db; padding-top: 3px; font-weight: 600; }
 .bill .tot { border-top: 1px solid #1d2430; padding-top: 4px; font-weight: 800; font-size: 15px; }
 .good { color: #2e9e5b; font-weight: 600; }
+.pm-bar { height: 12px; border-radius: 6px; margin: 8px 0 2px; }
+.pm-scale { display: flex; justify-content: space-between; font-size: 12px; color: #5b6573; }
+.pm-meta { font-size: 12px; color: #5b6573; margin: 6px 0; }
+.out tr.pm-row { cursor: pointer; }
+.out tr.pm-row:hover { background: #eef3fb; }
+.pm-dot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 4px; vertical-align: middle; }
 .cmp-bar { align-items: center; margin: 6px 0; }
 .cmp-bar button { flex: none; }
 .cmp-bar button:not(:disabled) { background: #1f5fbf; color: #fff; border-color: #1f5fbf; }

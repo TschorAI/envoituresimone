@@ -18,7 +18,8 @@ pump was not the cheapest refill (about 1 EUR more, trip included).
 ## What is here
 
 - **The web app** (on this computer for now): a map where you enter your home and see the stations
-  ranked by real cost, trip included, and compare any two. The trip comparison comes in v2. Ask Claude
+  ranked by real cost, trip included, and compare any two. A second tab maps every station in France, coloured
+  by price. The trip comparison comes in v2. Ask Claude
   Code to start it.
 
 ## Get started
