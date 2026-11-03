@@ -1,0 +1,8 @@
+[project]
+name = "envoituresimone"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["genau-kit"]
+
+[tool.uv.sources]
+genau-kit = { git = "https://github.com/Genau-AI/skills", subdirectory = "kit" }

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(task:*)",
+      "Bash(bash .claude/scripts/sync.sh:*)",
+      "Bash(uv run:*)",
+      "Bash(uv add:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/scripts/autosave.sh\" prompt"}]}
+    ],
+    "SessionEnd": [
+      {"hooks": [{"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/scripts/autosave.sh\" end"}]}
+    ]
+  }
+}
