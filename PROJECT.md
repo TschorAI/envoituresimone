@@ -153,7 +153,8 @@ Locally, to work on use case A: `ENABLE_REFILL=1 uv run python src/app.py`.
 - `src/envoituresimone/connectors/routing.py` — OpenRouteService directions (tolls / no tolls) and matrix.
 - `src/envoituresimone/snapshot.py` — hourly price snapshot and price history (run by the app).
 - `src/envoituresimone/connectors/_http.py` — shared HTTP client and in-memory cache.
-- `src/envoituresimone/static/index.html`, `app.js`, `style.css` — the map page.
+- `src/envoituresimone/static/index.html`, `app.js`, `style.css` — the map page (with Open Graph tags for link previews).
+- `src/envoituresimone/static/og.jpg` — the link-preview image (1200×627 crop of the live map, 2026-11-04).
 - `src/tests/test_cost.py` — cost model tests.
 - `src/_v2-trip.md` — working note: why the A -> B trip left v1, toll data found, v2 plan.
 - `src/_tool-tests.md` — working note: where n8n (meeting transcript bot) and Dataiku (GENAU mvp-software) get tested instead of here.
