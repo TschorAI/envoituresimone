@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>En voiture Simone — le vrai coût du plein et du trajet</title>
+<title>En voiture Simone — le vrai coût du plein</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="/static/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⛽</text></svg>">
@@ -12,17 +12,12 @@
 <aside id="panel">
   <header>
     <h1>En voiture Simone</h1>
-    <p class="sub">Le vrai coût d'un plein ou d'un trajet : carburant, usure, péages.</p>
+    <p class="sub">Le vrai coût d'un plein : le carburant acheté, plus le trajet pour aller le chercher.</p>
   </header>
-
-  <nav class="tabs">
-    <button data-tab="refill" class="active">Faire le plein</button>
-    <button data-tab="trip">Trajet A → B</button>
-  </nav>
 
   <div id="routing-warning" class="note warn" hidden>
     Pas de clé OpenRouteService (<code>ORS_API_KEY</code> dans <code>.env</code>) :
-    distances à vol d'oiseau estimées, trajets A → B indisponibles.
+    distances à vol d'oiseau estimées.
   </div>
 
   <section id="tab-refill" class="tab">
@@ -41,26 +36,6 @@
     <div id="refill-out" class="out"></div>
   </section>
 
-  <section id="tab-trip" class="tab" hidden>
-    <label>Départ
-      <div class="addr">
-        <input id="start" placeholder="Adresse, ou clic sur la carte" autocomplete="off">
-        <button class="pick" data-target="start" title="Choisir sur la carte">◎</button>
-      </div>
-    </label>
-    <label>Arrivée
-      <div class="addr">
-        <input id="end" placeholder="Adresse, ou clic sur la carte" autocomplete="off">
-        <button class="pick" data-target="end" title="Choisir sur la carte">◎</button>
-      </div>
-    </label>
-    <div class="row">
-      <label>Prix (€/L) <input id="price" type="number" step="0.001" placeholder="auto"></label>
-      <label>Péage (€/km) <input id="toll" type="number" step="0.01" value="0.11"></label>
-    </div>
-    <button class="go" id="go-trip">Comparer avec et sans péage</button>
-    <div id="trip-out" class="out"></div>
-  </section>
 
   <details class="settings" open>
     <summary>Véhicule</summary>

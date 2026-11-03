@@ -8,7 +8,7 @@ const hm = (h) => { const m = Math.round(h * 60); return m >= 60 ? `${Math.floor
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 let CFG = null;
-const points = { home: null, start: null, end: null };   // {lat, lon, label}
+const points = { home: null };   // {lat, lon, label}
 const markers = {};
 let picking = null;
 
@@ -17,8 +17,8 @@ const map = L.map("map").setView([46.6, 2.5], 6);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19, attribution: "© OpenStreetMap",
 }).addTo(map);
-const layers = { refill: L.layerGroup().addTo(map), trip: L.layerGroup().addTo(map), leg: L.layerGroup().addTo(map) };
-const PIN = { home: "🏠", start: "A", end: "B" };
+const layers = { refill: L.layerGroup().addTo(map), leg: L.layerGroup().addTo(map) };
+const PIN = { home: "🏠" };
 
 function setPoint(name, p) {
   points[name] = p;
@@ -68,7 +68,7 @@ function choose(i) {
   setPoint(sugFor.id, it); map.setView([it.lat, it.lon], Math.max(map.getZoom(), 12)); sug.hidden = true;
 }
 sug.addEventListener("mousedown", (e) => { const li = e.target.closest("li"); if (li) choose(+li.dataset.i); });
-["home", "start", "end"].forEach((id) => {
+["home"].forEach((id) => {
   const inp = $(id);
   inp.addEventListener("input", () => {
     points[id] = null; clearTimeout(sugTimer);
@@ -96,15 +96,6 @@ async function ensurePoint(name) {
   if (!res.length) throw new Error(`Adresse introuvable : ${q}`);
   setPoint(name, res[0]); return res[0];
 }
-
-// ---------- tabs ----------
-document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
-  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("active", x === b));
-  document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== `tab-${b.dataset.tab}`));
-  const refill = b.dataset.tab === "refill";
-  [layers.refill, layers.leg, markers.home].forEach((l) => l && (refill ? l.addTo(map) : l.remove()));
-  [layers.trip, markers.start, markers.end].forEach((l) => l && (refill ? l.remove() : l.addTo(map)));
-}));
 
 // ---------- consumption curve ----------
 const fuel = () => $("fuel").value;
@@ -290,52 +281,18 @@ async function showCompare() {
   await drawLegs([a, b], true);
 }
 
-// ---------- use case B: trip ----------
-const COL = { fastest: "#1f5fbf", toll: "#d64933", toll_free: "#2e9e5b" };
-$("go-trip").addEventListener("click", () => run($("go-trip"), $("trip-out"), async () => {
-  const [start, end] = [await ensurePoint("start"), await ensurePoint("end")];
-  const price = parseFloat($("price").value);
-  const d = await post("/api/trip", { ...common(), start, end, price_eur_l: isNaN(price) ? null : price, toll_eur_km: parseFloat($("toll").value) || 0 });
-  layers.trip.clearLayers();
-  // toll-free under, fastest on top with its tolled parts in red
-  L.polyline(d.toll_free.geometry, { color: COL.toll_free, weight: 6, opacity: 0.75 }).bindTooltip("Sans péage").addTo(layers.trip);
-  L.polyline(d.fastest.geometry, { color: COL.fastest, weight: 4, opacity: 0.85 }).bindTooltip("Le plus rapide").addTo(layers.trip);
-  d.fastest.toll_ranges.forEach(([i, j]) => L.polyline(d.fastest.geometry.slice(i, j + 1), { color: COL.toll, weight: 5 }).bindTooltip("Péage").addTo(layers.trip));
-  map.fitBounds(L.latLngBounds(d.fastest.geometry.concat(d.toll_free.geometry)).pad(0.05));
-
-  const win = d.saved_eur > 0 ? "toll_free" : "fastest";
-  const card = (key, title, sw) => {
-    const r = d[key];
-    return `<div class="card ${key === win ? "win" : ""}"><h3><span class="swatch" style="background:${sw}"></span>${title}</h3>
-      <div class="big">${eur(r.total_eur)}</div>
-      <dl><dt>Distance</dt><dd>${km(r.km)}</dd><dt>Durée</dt><dd>${hm(r.hours)}</dd>
-      <dt>Carburant</dt><dd>${r.litres.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} L · ${eur(r.fuel_eur)}</dd>
-      <dt>Usure</dt><dd>${eur(r.wear_eur)}</dd>
-      <dt>Péages</dt><dd>${km(r.toll_km)} · ${eur(r.toll_eur)}</dd></dl></div>`;
-  };
-  let verdict;
-  if (Math.abs(d.saved_eur) < 0.5) verdict = "Les deux options coûtent à peu près pareil.";
-  else if (d.saved_eur > 0) verdict = `Sans péage : <b>${eur(d.saved_eur)} économisés</b> pour ${hm(Math.max(d.extra_hours, 0))} de plus` +
-    (d.eur_per_hour_lost ? ` (soit ${eur(d.eur_per_hour_lost)} par heure perdue).` : ".");
-  else verdict = `L'autoroute est <b>moins chère de ${eur(-d.saved_eur)}</b> et plus rapide de ${hm(Math.max(d.extra_hours, 0))}.`;
-  $("trip-out").innerHTML = `<div class="verdict">${verdict}</div>
-    <div class="cards">${card("fastest", "Le plus rapide", COL.fastest)}${card("toll_free", "Sans péage", COL.toll_free)}</div>
-    ${notes(d.fastest.warnings, "warn")}${notes(d.notes)}`;
-}));
-
 // ---------- start ----------
 (async () => {
   CFG = await (await fetch("/api/config")).json();
   $("fuel").innerHTML = Object.entries(CFG.fuels).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
   $("fuel").value = CFG.fuels[localStorage.getItem("fuel")] ? localStorage.getItem("fuel") : "e10";
   $("fuel").addEventListener("change", () => { localStorage.setItem("fuel", fuel()); renderCurve(); });
-  $("wear").value = CFG.wear_eur_km; $("toll").value = CFG.toll_eur_km;
+  $("wear").value = CFG.wear_eur_km;
   $("routing-warning").hidden = CFG.routing;
   renderCurve();
-  for (const name of ["home", "start", "end"]) {
+  for (const name of ["home"]) {
     const p = localStorage.getItem(`pt-${name}`);
     if (p) setPoint(name, JSON.parse(p));
   }
-  markers.start?.remove(); markers.end?.remove();
   if (points.home) map.setView([points.home.lat, points.home.lon], 12);
 })();

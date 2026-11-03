@@ -7,7 +7,7 @@ true when the code changes.
 
 ## 1. The question
 
-A web app for French drivers that gives the real cost of a refill or a trip. Use case A: the cheapest station near home, counting fuel bought plus fuel, wear and tear spent to drive there. Use case B: the cost of an A -> B route, fastest (with tolls) against toll-free, counting fuel, wear and tolls. Data: prix-carburants.gouv.fr (live station prices), Géoplateforme geocoding, OpenRouteService routing (OSM, avoid tollways). V1: E10 and Diesel, editable consumption-by-speed curve per fuel, wear 0.10 EUR/km (optional, on by default), tolls 0.11 EUR/km estimate with a warning on short tolled stretches (Duplex A86). Out of scope: price forecasting, car models.
+A web app for French drivers that gives the real cost of a refill or a trip. Use case A: the cheapest station near home, counting fuel bought plus fuel, wear and tear spent to drive there. Use case B: the cost of an A -> B route, fastest (with tolls) against toll-free, counting fuel, wear and tolls. Data: prix-carburants.gouv.fr (live station prices), Géoplateforme geocoding, OpenRouteService routing (OSM, avoid tollways). V1 (use case A only): E10 and Diesel, editable consumption-by-speed curve per fuel, wear 0.10 EUR/km (optional, on by default). Use case B moves to v2, with real toll tariffs. Out of scope: price forecasting, car models.
 
 ## 2. Data flow
 
@@ -25,7 +25,7 @@ External inputs, all read-only:
 |---|---|---|
 | Live fuel prices (prix-carburants.gouv.fr instant flow, `data.economie.gouv.fr` API) | `connectors/prices.py` | Free, no key. One call per 100 stations, cached 10 min in memory. |
 | Géoplateforme IGN address search, completion, reverse (`data.geopf.fr/geocodage`) | `connectors/geocode.py` | Free, no key. Cached 24 h in memory. |
-| OpenRouteService directions and matrix (`api.openrouteservice.org`, OSM) | `connectors/routing.py` | Free key, 2000 directions and 500 matrix calls a day. Use case A: 1 matrix call per search + 1 directions call per station clicked. Use case B: 2 directions calls. |
+| OpenRouteService directions and matrix (`api.openrouteservice.org`, OSM) | `connectors/routing.py` | Free key, 2000 directions and 500 matrix calls a day. Use case A: 1 matrix call per search + 1 directions call per station clicked. |
 | OpenStreetMap tiles, Leaflet 1.9.4 (unpkg CDN) | the browser | Free, fair use. |
 
 Note the cost of each: a web download (cached or not), a database read, a remote job, anything
@@ -36,7 +36,7 @@ ones the project needs; `tools/setup.sh` checks exactly these (its `ENV_VARS` li
 
 | Variable | For |
 |---|---|
-| `ORS_API_KEY` | OpenRouteService routing. Without it, use case A falls back on crow-fly distance x 1.3 at 40 km/h, and use case B is off. |
+| `ORS_API_KEY` | OpenRouteService routing. Without it, distances are crow-fly x 1.3 at 40 km/h. |
 
 ## 3. The code
 
@@ -46,8 +46,8 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 | Script or module | Does | Reads | Writes | Run time |
 |---|---|---|---|---|
 | `src/app.py` | Starts the web app on http://127.0.0.1:8000 (`--port N`, `--reload`) | the package below, `.env` | nothing | stays up |
-| `src/envoituresimone/cost.py` | The cost model, pure functions (no I/O): consumption curve, route cost, refill cost | nothing | nothing | instant |
-| `src/envoituresimone/api.py` | FastAPI app: `/api/refill` (A), `/api/trip` (B), `/api/leg`, `/api/complete`, `/api/geocode`, `/api/reverse`, `/api/config`, and the page | connectors | nothing | 1-5 s a request |
+| `src/envoituresimone/cost.py` | The cost model, pure functions (no I/O): consumption curve, refill cost, route cost (route cost kept for v2) | nothing | nothing | instant |
+| `src/envoituresimone/api.py` | FastAPI app: `/api/refill` (A), `/api/leg`, `/api/complete`, `/api/geocode`, `/api/reverse`, `/api/config`, and the page | connectors | nothing | 1-5 s a request |
 | `src/envoituresimone/connectors/` | One HTTP client per service (prices, geocode, routing) | the services of section 2 | nothing | network-bound |
 | `src/envoituresimone/static/` | The page: Leaflet map, address autocomplete, map picking, curve editor, results | `/api/*` | browser localStorage (curve, points, fuel) | - |
 | `src/tests/test_cost.py` | Checks the cost model on hand-computed cases (`uv run pytest`) | nothing | nothing | < 1 s |
@@ -61,7 +61,7 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 - Fuel keys follow the price dataset prefixes: `e10`, `gazole`. E10 uses the former SP95 curve (E10 burns a little more, about 1-2 %; adjust in the app).
 - Consumption: linear interpolation on the speed curve, flat beyond its ends. Each route step of ORS is one leg at its own average speed.
 - Use case A: round trip = 2 x the one-way road route. Fuel burnt on the way is priced at the station's price. Only the 25 best stations on a crow-fly pre-ranking are routed (quota).
-- Use case B: tolls = tolled km x 0.11 EUR/km (ORS `tollways` extra). Tolled stretches under 15 km get a warning. Fuel price: user input, or the median of stations within 10 km of the start (30 km if none).
+- Use case B (A -> B trip) is not in v1: see `src/_v2-trip.md`.
 - Wear: 0.10 EUR/km, on by default, off when unchecked.
 
 ## 5. Boundaries: what may change
@@ -75,8 +75,7 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 
 ## 6. Known limits and open questions
 
-- Tolls are a flat per-km estimate; real tariffs differ by operator and class, and urban tunnels (Duplex A86) are far above it.
-- ORS's toll-free route may still contain tolled parts when no alternative exists (a note says so).
+- Use case B needs real toll tariffs matched to routes: v2, see `src/_v2-trip.md`.
 - The round trip assumes the way back equals the way there (one-way streets ignored).
 - Default consumption curves are generic values for an average compact car, not measured.
 - Stations' opening hours and price age (`updated`) are not yet used in the ranking.
@@ -87,6 +86,7 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 - 2026-11-03: local web app v1: both use cases, live prices, geocoding, ORS routing, Leaflet map.
 - 2026-11-03: SP95 replaced by E10 (many stations sell only E10).
 - 2026-11-03: use case A: detail card per station (pump price, refill, trip fuel and wear), comparison of two stations (table and both routes on the map). Fuel on fast roads stays at the ORS average speed, consistent with trip times (user choice).
+- 2026-11-03: A -> B trip removed from the app (flat toll estimate too rough); v2 plan in `src/_v2-trip.md`.
 
 ## 8. Setting up a machine
 
@@ -125,6 +125,7 @@ Run the app: `uv run python src/app.py`, then open http://127.0.0.1:8000.
 - `src/envoituresimone/connectors/_http.py` — shared HTTP client and in-memory cache.
 - `src/envoituresimone/static/index.html`, `app.js`, `style.css` — the map page.
 - `src/tests/test_cost.py` — cost model tests.
+- `src/_v2-trip.md` — working note: why the A -> B trip left v1, toll data found, v2 plan.
 
 ### Tools
 

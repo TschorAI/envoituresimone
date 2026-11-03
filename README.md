@@ -2,7 +2,7 @@
 
 ## Summary
 
-- **What:** A web app for French drivers that gives the real cost of a refill or a trip. Use case A: the cheapest station near home, counting fuel bought plus fuel, wear and tear spent to drive there. Use case B: the cost of an A -> B route, fastest (with tolls) against toll-free, counting fuel, wear and tolls. Data: prix-carburants.gouv.fr (live station prices), Géoplateforme geocoding, OpenRouteService routing (OSM, avoid tollways). V1: E10 and Diesel, editable consumption-by-speed curve per fuel, wear 0.10 EUR/km (optional, on by default), tolls 0.11 EUR/km estimate with a warning on short tolled stretches (Duplex A86). Out of scope: price forecasting, car models.
+- **What:** A web app for French drivers that gives the real cost of a refill or a trip. Use case A: the cheapest station near home, counting fuel bought plus fuel, wear and tear spent to drive there. Use case B: the cost of an A -> B route, fastest (with tolls) against toll-free, counting fuel, wear and tolls. Data: prix-carburants.gouv.fr (live station prices), Géoplateforme geocoding, OpenRouteService routing (OSM, avoid tollways). V1 (use case A only): E10 and Diesel, editable consumption-by-speed curve per fuel, wear 0.10 EUR/km (optional, on by default). Use case B moves to v2, with real toll tariffs. Out of scope: price forecasting, car models.
 - **Status:** in progress
 - **Created by:** leonardtschora
 - **Created on:** 2026-11-03
@@ -12,15 +12,13 @@
 ## In short
 
 Is the cheapest pump really the cheapest refill, once you count the drive there? And is the
-toll-free road really cheaper than the motorway, once you count fuel and wear? The app answers
-both for any French address, with today's prices. First runs around Paris: the cheapest diesel
-pump was not the cheapest refill (about 1 EUR more, trip included). Paris to Lyon in E10: about
-154 EUR by motorway against 112 EUR toll-free, so 42 EUR saved for 2 h 43 more on the road.
+toll-free road really cheaper than the motorway? The app answers the first for any French address, with today's prices. First runs around Paris: the cheapest diesel
+pump was not the cheapest refill (about 1 EUR more, trip included).
 
 ## What is here
 
-- **The web app** (on this computer for now): a map where you enter your home or a trip, then see
-  the stations ranked by real cost, or the motorway and toll-free routes side by side. Ask Claude
+- **The web app** (on this computer for now): a map where you enter your home and see the stations
+  ranked by real cost, trip included, and compare any two. The trip comparison comes in v2. Ask Claude
   Code to start it.
 
 ## Get started

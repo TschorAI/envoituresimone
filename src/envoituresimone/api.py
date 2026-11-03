@@ -2,7 +2,6 @@
 # Reads: the connectors (live prices, geocoding, routing), static/. Writes: nothing.
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -42,13 +41,6 @@ class RefillIn(Common):
     max_routed: int = Field(25, ge=1, le=50)
 
 
-class TripIn(Common):
-    start: Point
-    end: Point
-    price_eur_l: float | None = None  # None: median price around the start
-    toll_eur_km: float = cost.DEFAULT_TOLL_EUR_KM
-
-
 class LegIn(BaseModel):
     a: Point
     b: Point
@@ -62,8 +54,7 @@ def index():
 @app.get("/api/config")
 def config():
     return {"fuels": prices.FUELS, "curves": cost.DEFAULT_CURVES,
-            "wear_eur_km": cost.DEFAULT_WEAR_EUR_KM, "toll_eur_km": cost.DEFAULT_TOLL_EUR_KM,
-            "short_toll_km": cost.SHORT_TOLL_KM, "routing": routing.has_key()}
+            "wear_eur_km": cost.DEFAULT_WEAR_EUR_KM, "routing": routing.has_key()}
 
 
 @app.get("/api/complete")
@@ -140,36 +131,3 @@ async def leg(q: LegIn):
     except routing.RoutingError as e:
         raise HTTPException(503, str(e))
     return {"geometry": r["geometry"]}
-
-
-@app.post("/api/trip")
-async def trip(q: TripIn):
-    """Use case B: fastest route (tolls allowed) against the toll-free route."""
-    _check_fuel(q.fuel)
-    curve = q.the_curve()
-    notes = []
-    price = q.price_eur_l
-    if price is None:
-        price = await prices.median_price(q.start.lat, q.start.lon, q.fuel)
-        if price is None:
-            raise HTTPException(404, "Aucun prix trouvé autour du départ : saisissez-en un.")
-        notes.append(f"Prix du carburant : médiane des stations autour du départ, {price:.3f} €/L.")
-    try:
-        fast, free = await asyncio.gather(
-            routing.route(q.start.t(), q.end.t(), avoid_tolls=False),
-            routing.route(q.start.t(), q.end.t(), avoid_tolls=True))
-    except routing.RoutingError as e:
-        raise HTTPException(503, str(e))
-
-    out = {}
-    for name, r in (("fastest", fast), ("toll_free", free)):
-        c = cost.route_cost(r["legs"], r["toll_stretches_km"], curve, price, q.wear_eur_km, q.toll_eur_km)
-        out[name] = {**c.to_dict(), "geometry": r["geometry"], "toll_ranges": r["toll_ranges"]}
-    if out["toll_free"]["toll_km"] > 0:
-        notes.append("Aucun itinéraire entièrement sans péage trouvé : l'option « sans péage » en garde une partie.")
-    if out["fastest"]["toll_km"] == 0:
-        notes.append("Le trajet le plus rapide n'a pas de péage : les deux options sont identiques ou proches.")
-    saved = out["fastest"]["total_eur"] - out["toll_free"]["total_eur"]
-    lost_h = out["toll_free"]["hours"] - out["fastest"]["hours"]
-    return {**out, "price_eur_l": price, "saved_eur": round(saved, 2), "extra_hours": round(lost_h, 3),
-            "eur_per_hour_lost": round(saved / lost_h, 2) if lost_h > 0.01 else None, "notes": notes}

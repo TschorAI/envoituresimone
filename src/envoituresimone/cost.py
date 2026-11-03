@@ -1,7 +1,8 @@
 # The cost model. Pure functions, no network, no files: the same code can run in a Dataiku
 # recipe or behind an n8n webhook.
 # Reads: nothing. Writes: nothing.
-"""Cost of a refill (use case A) and of a route (use case B).
+"""Cost of a refill (use case A, in the app) and of a route (use case B, kept for v2:
+not exposed in the app, see src/_v2-trip.md).
 
 Units: distances in km, durations in hours, speeds in km/h, consumption in L/100 km,
 prices in EUR/L, money in EUR.
