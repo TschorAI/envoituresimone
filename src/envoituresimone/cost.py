@@ -87,9 +87,9 @@ def route_cost(
     short = [s for s in toll_stretches_km if 0 < s < SHORT_TOLL_KM]
     if short:
         warnings.append(
-            f"{len(short)} short tolled stretch(es) ({', '.join(f'{s:.1f} km' for s in short)}): "
-            f"the {toll_eur_km:.2f} EUR/km estimate can be far off there "
-            "(urban tunnels such as the Duplex A86 cost several EUR for about 10 km)."
+            f"{len(short)} court(s) tronçon(s) à péage ({', '.join(f'{s:.1f} km' for s in short)}) : "
+            f"l'estimation à {toll_eur_km:.2f} €/km peut y être très fausse "
+            "(un tunnel urbain comme le Duplex A86 coûte plusieurs euros pour une dizaine de km)."
         )
     return RouteCost(km, hours, litres, fuel, wear, toll_km, toll, fuel + wear + toll, warnings)
 

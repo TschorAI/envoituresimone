@@ -14,7 +14,8 @@
 Is the cheapest pump really the cheapest refill, once you count the drive there? And is the
 toll-free road really cheaper than the motorway, once you count fuel and wear? The app answers
 both for any French address, with today's prices. First runs around Paris: the cheapest diesel
-pump was not the cheapest refill (about 1 EUR more, trip included).
+pump was not the cheapest refill (about 1 EUR more, trip included). Paris to Lyon in E10: about
+154 EUR by motorway against 112 EUR toll-free, so 42 EUR saved for 2 h 43 more on the road.
 
 ## What is here
 

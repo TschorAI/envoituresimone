@@ -233,7 +233,7 @@ $("go-trip").addEventListener("click", () => run($("go-trip"), $("trip-out"), as
     return `<div class="card ${key === win ? "win" : ""}"><h3><span class="swatch" style="background:${sw}"></span>${title}</h3>
       <div class="big">${eur(r.total_eur)}</div>
       <dl><dt>Distance</dt><dd>${km(r.km)}</dd><dt>Durée</dt><dd>${hm(r.hours)}</dd>
-      <dt>Carburant</dt><dd>${r.litres.toFixed(1)} L · ${eur(r.fuel_eur)}</dd>
+      <dt>Carburant</dt><dd>${r.litres.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} L · ${eur(r.fuel_eur)}</dd>
       <dt>Usure</dt><dd>${eur(r.wear_eur)}</dd>
       <dt>Péages</dt><dd>${km(r.toll_km)} · ${eur(r.toll_eur)}</dd></dl></div>`;
   };

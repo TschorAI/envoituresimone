@@ -94,7 +94,7 @@ async def refill(q: RefillIn):
     stations = await prices.stations_near(q.home.lat, q.home.lon, q.radius_km, q.fuel)
     if not stations:
         return {"stations": [], "found": 0, "routing": routing.has_key(), "notes": [
-            f"No station sells {prices.FUELS[q.fuel]} within {q.radius_km} km."]}
+            f"Aucune station ne vend du {prices.FUELS[q.fuel]} à moins de {q.radius_km:g} km."]}
 
     # Pre-rank on a crow-fly estimate, then route only the best candidates (API quota).
     def rough(s):
@@ -106,14 +106,14 @@ async def refill(q: RefillIn):
     try:
         dist = await routing.one_to_many(q.home.t(), [(s["lat"], s["lon"]) for s in candidates])
     except routing.RoutingError as e:
-        notes.append(f"{e} Distances are crow-fly x {routing.DETOUR_FACTOR}.")
+        notes.append(f"{e} Distances à vol d'oiseau x {routing.DETOUR_FACTOR}.")
         dist = [{"km": routing.haversine_km(q.home.lat, q.home.lon, s["lat"], s["lon"]) * routing.DETOUR_FACTOR,
                  "hours": 0, "estimated": True} for s in candidates]
         for d in dist:
             d["hours"] = d["km"] / routing.FALLBACK_KMH
     if not routing.has_key():
-        notes.append(f"No ORS_API_KEY: distances are crow-fly x {routing.DETOUR_FACTOR} at "
-                     f"{routing.FALLBACK_KMH:.0f} km/h.")
+        notes.append(f"Pas de clé ORS_API_KEY : distances à vol d'oiseau x {routing.DETOUR_FACTOR}, "
+                     f"à {routing.FALLBACK_KMH:.0f} km/h.")
 
     ranked = []
     for s, d in zip(candidates, dist):
@@ -124,9 +124,9 @@ async def refill(q: RefillIn):
     best = ranked[0]
     if cheapest_pump["id"] != best["id"]:
         notes.append(
-            f"The cheapest pump ({cheapest_pump['price']:.3f} EUR/L, {cheapest_pump['city']}) is not "
-            f"the cheapest refill: the trip there costs more than it saves "
-            f"({cheapest_pump['total_eur'] - best['total_eur']:.2f} EUR more).")
+            f"La pompe la moins chère ({cheapest_pump['price']:.3f} €/L, {cheapest_pump['city']}) n'est pas "
+            f"le plein le moins cher : le trajet coûte plus qu'il ne fait gagner "
+            f"({cheapest_pump['total_eur'] - best['total_eur']:.2f} € de plus).")
     return {"stations": ranked, "found": len(stations), "routed": len(candidates),
             "best_id": best["id"], "cheapest_pump_id": cheapest_pump["id"],
             "routing": routing.has_key(), "notes": notes}
@@ -152,8 +152,8 @@ async def trip(q: TripIn):
     if price is None:
         price = await prices.median_price(q.start.lat, q.start.lon, q.fuel)
         if price is None:
-            raise HTTPException(404, "No price found near the start: enter one.")
-        notes.append(f"Fuel price: median of the stations around the start, {price:.3f} EUR/L.")
+            raise HTTPException(404, "Aucun prix trouvé autour du départ : saisissez-en un.")
+        notes.append(f"Prix du carburant : médiane des stations autour du départ, {price:.3f} €/L.")
     try:
         fast, free = await asyncio.gather(
             routing.route(q.start.t(), q.end.t(), avoid_tolls=False),
@@ -166,9 +166,9 @@ async def trip(q: TripIn):
         c = cost.route_cost(r["legs"], r["toll_stretches_km"], curve, price, q.wear_eur_km, q.toll_eur_km)
         out[name] = {**c.to_dict(), "geometry": r["geometry"], "toll_ranges": r["toll_ranges"]}
     if out["toll_free"]["toll_km"] > 0:
-        notes.append("No fully toll-free route was found: the 'toll-free' route still has tolled parts.")
+        notes.append("Aucun itinéraire entièrement sans péage trouvé : l'option « sans péage » en garde une partie.")
     if out["fastest"]["toll_km"] == 0:
-        notes.append("The fastest route has no tolls: both options are the same road or close.")
+        notes.append("Le trajet le plus rapide n'a pas de péage : les deux options sont identiques ou proches.")
     saved = out["fastest"]["total_eur"] - out["toll_free"]["total_eur"]
     lost_h = out["toll_free"]["hours"] - out["fastest"]["hours"]
     return {**out, "price_eur_l": price, "saved_eur": round(saved, 2), "extra_hours": round(lost_h, 3),
