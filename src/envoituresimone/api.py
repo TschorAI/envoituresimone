@@ -70,7 +70,8 @@ class LegIn(BaseModel):
     b: Point
 
 
-@app.get("/", response_class=HTMLResponse)
+# HEAD too: link-preview bots (LinkedIn...) often check the page with HEAD before reading it.
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def index():
     html = (STATIC / "index.html").read_text(encoding="utf-8")
     if GOATCOUNTER_CODE:
