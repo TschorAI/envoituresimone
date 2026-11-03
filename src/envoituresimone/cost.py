@@ -1,5 +1,5 @@
-# The cost model. Pure functions, no network, no files: the same code can run in a Dataiku
-# recipe or behind an n8n webhook.
+# The cost model. Pure functions, no network, no files, so it is tested apart from the data
+# services.
 # Reads: nothing. Writes: nothing.
 """Cost of a refill (use case A, in the app) and of a route (use case B, kept for v2:
 not exposed in the app, see src/_v2-trip.md).

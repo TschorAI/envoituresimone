@@ -9,9 +9,9 @@ true when the code changes.
 
 A web app for French drivers that gives the real cost of a refill or a trip. Use case A: the cheapest station near home, counting fuel bought plus fuel, wear and tear spent to drive there. Use case B: the cost of an A -> B route, fastest (with tolls) against toll-free, counting fuel, wear and tolls. Data: prix-carburants.gouv.fr (live station prices), Géoplateforme geocoding, OpenRouteService routing (OSM, avoid tollways). V1 (use case A only): E10 and Diesel, editable consumption-by-speed curve per fuel, wear 0.10 EUR/km (optional, on by default). Use case B moves to v2, with real toll tariffs. Out of scope: price forecasting, car models.
 
-Purpose: a hands-on project to learn Dataiku and n8n. The local app (FastAPI + Leaflet) is the
-reference; the target splits the work between a Dataiku Cloud project (price pipeline, history,
-checks, ranking API, webapp) and n8n workflows (orchestration, webhooks, alerts), on free trials.
+A plain web app (FastAPI + Leaflet), with an hourly price snapshot. It was first meant as a
+Dataiku + n8n demo; that was dropped on 2026-11-03 (neither fits the app). The tool tests moved
+to other projects: see `src/_tool-tests.md`.
 
 ## 2. Data flow
 
@@ -58,8 +58,7 @@ Run from the project root, in the project's env: `uv run python src/<script>.py`
 | `src/envoituresimone/static/` | The page: Leaflet map, address autocomplete, map picking, curve editor, results | `/api/*` | browser localStorage (curve, points, fuel) | - |
 | `src/tests/test_cost.py` | Checks the cost model on hand-computed cases (`uv run pytest`) | nothing | nothing | < 1 s |
 
-The split is meant for the Dataiku + n8n version: `cost.py` moves as-is into a Dataiku Python
-recipe or API endpoint; each connector maps to one n8n HTTP Request node.
+`cost.py` has no I/O, so the cost model is tested and changed apart from the data services.
 
 ## 4. Conventions
 
@@ -95,6 +94,7 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 - 2026-11-03: use case A: detail card per station (pump price, refill, trip fuel and wear), comparison of two stations (table and both routes on the map). Fuel on fast roads stays at the ORS average speed, consistent with trip times (user choice).
 - 2026-11-03: A -> B trip removed from the app (flat toll estimate too rough); v2 plan in `src/_v2-trip.md`.
 - 2026-11-03: hourly price snapshot with history (`tools/fetch_prices.py`); prices older than 7 days left out.
+- 2026-11-03: Dataiku and n8n dropped from this project; their tests moved elsewhere (`src/_tool-tests.md`).
 
 ## 8. Setting up a machine
 
@@ -137,6 +137,7 @@ log is `data/prices/fetch.log`. When the machine is off, the app falls back on t
 - `src/envoituresimone/static/index.html`, `app.js`, `style.css` — the map page.
 - `src/tests/test_cost.py` — cost model tests.
 - `src/_v2-trip.md` — working note: why the A -> B trip left v1, toll data found, v2 plan.
+- `src/_tool-tests.md` — working note: where n8n (meeting transcript bot) and Dataiku (GENAU mvp-software) get tested instead of here.
 
 ### Tools
 
