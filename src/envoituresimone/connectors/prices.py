@@ -9,7 +9,7 @@ from ._http import cached, client, store
 
 URL = ("https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/"
        "prix-des-carburants-en-france-flux-instantane-v2/records")
-FUELS = {"sp95": "SP95", "gazole": "Diesel (gazole)"}  # app key -> label; key is the dataset prefix
+FUELS = {"e10": "E10 (SP95-E10)", "gazole": "Diesel (gazole)"}  # app key -> label; key is the dataset prefix
 PAGE = 100
 MAX_STATIONS = 500
 

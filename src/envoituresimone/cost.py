@@ -13,7 +13,7 @@ from dataclasses import dataclass, field, asdict
 # Default consumption-by-speed curves, (speed km/h, L/100 km), for an average compact car.
 # Editable in the app. Shape: high in town (stops), lowest around 70-90 km/h, rising with drag.
 DEFAULT_CURVES: dict[str, list[tuple[float, float]]] = {
-    "sp95": [(10, 11.0), (30, 8.0), (50, 6.5), (70, 5.8), (90, 5.6), (110, 6.4), (130, 7.6)],
+    "e10": [(10, 11.0), (30, 8.0), (50, 6.5), (70, 5.8), (90, 5.6), (110, 6.4), (130, 7.6)],
     "gazole": [(10, 9.0), (30, 6.6), (50, 5.3), (70, 4.8), (90, 4.6), (110, 5.3), (130, 6.3)],
 }
 DEFAULT_WEAR_EUR_KM = 0.10

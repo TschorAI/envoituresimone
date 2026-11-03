@@ -7,7 +7,7 @@ true when the code changes.
 
 ## 1. The question
 
-A web app for French drivers that gives the real cost of a refill or a trip. Use case A: the cheapest station near home, counting fuel bought plus fuel, wear and tear spent to drive there. Use case B: the cost of an A -> B route, fastest (with tolls) against toll-free, counting fuel, wear and tolls. Data: prix-carburants.gouv.fr (live station prices), Géoplateforme geocoding, OpenRouteService routing (OSM, avoid tollways). V1: SP95 and Diesel, editable consumption-by-speed curve per fuel, wear 0.10 EUR/km (optional, on by default), tolls 0.11 EUR/km estimate with a warning on short tolled stretches (Duplex A86). Out of scope: price forecasting, car models.
+A web app for French drivers that gives the real cost of a refill or a trip. Use case A: the cheapest station near home, counting fuel bought plus fuel, wear and tear spent to drive there. Use case B: the cost of an A -> B route, fastest (with tolls) against toll-free, counting fuel, wear and tolls. Data: prix-carburants.gouv.fr (live station prices), Géoplateforme geocoding, OpenRouteService routing (OSM, avoid tollways). V1: E10 and Diesel, editable consumption-by-speed curve per fuel, wear 0.10 EUR/km (optional, on by default), tolls 0.11 EUR/km estimate with a warning on short tolled stretches (Duplex A86). Out of scope: price forecasting, car models.
 
 ## 2. Data flow
 
@@ -58,7 +58,7 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 ## 4. Conventions
 
 - Units: km, hours, km/h, L/100 km, EUR/L, EUR. Points are (lat, lon) in the code, [lon, lat] only at the ORS boundary.
-- Fuel keys follow the price dataset prefixes: `sp95`, `gazole`.
+- Fuel keys follow the price dataset prefixes: `e10`, `gazole`. E10 uses the former SP95 curve (E10 burns a little more, about 1-2 %; adjust in the app).
 - Consumption: linear interpolation on the speed curve, flat beyond its ends. Each route step of ORS is one leg at its own average speed.
 - Use case A: round trip = 2 x the one-way road route. Fuel burnt on the way is priced at the station's price. Only the 25 best stations on a crow-fly pre-ranking are routed (quota).
 - Use case B: tolls = tolled km x 0.11 EUR/km (ORS `tollways` extra). Tolled stretches under 15 km get a warning. Fuel price: user input, or the median of stations within 10 km of the start (30 km if none).
@@ -75,7 +75,6 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 
 ## 6. Known limits and open questions
 
-- Many stations sell only E10, not SP95: they do not show for SP95. Open question: offer E10 (or "SP95 or E10").
 - Tolls are a flat per-km estimate; real tariffs differ by operator and class, and urban tunnels (Duplex A86) are far above it.
 - ORS's toll-free route may still contain tolled parts when no alternative exists (a note says so).
 - The round trip assumes the way back equals the way there (one-way streets ignored).
@@ -86,6 +85,7 @@ recipe or API endpoint; each connector maps to one n8n HTTP Request node.
 
 - 2026-11-03: project created.
 - 2026-11-03: local web app v1: both use cases, live prices, geocoding, ORS routing, Leaflet map.
+- 2026-11-03: SP95 replaced by E10 (many stations sell only E10).
 
 ## 8. Setting up a machine
 

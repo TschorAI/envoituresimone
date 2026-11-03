@@ -251,7 +251,7 @@ $("go-trip").addEventListener("click", () => run($("go-trip"), $("trip-out"), as
 (async () => {
   CFG = await (await fetch("/api/config")).json();
   $("fuel").innerHTML = Object.entries(CFG.fuels).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
-  $("fuel").value = localStorage.getItem("fuel") || "sp95";
+  $("fuel").value = CFG.fuels[localStorage.getItem("fuel")] ? localStorage.getItem("fuel") : "e10";
   $("fuel").addEventListener("change", () => { localStorage.setItem("fuel", fuel()); renderCurve(); });
   $("wear").value = CFG.wear_eur_km; $("toll").value = CFG.toll_eur_km;
   $("routing-warning").hidden = CFG.routing;

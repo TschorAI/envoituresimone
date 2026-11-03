@@ -27,7 +27,7 @@ class Point(BaseModel):
 
 
 class Common(BaseModel):
-    fuel: str = "sp95"
+    fuel: str = "e10"
     curve: list[tuple[float, float]] | None = None     # None: the fuel's default curve
     wear_eur_km: float | None = cost.DEFAULT_WEAR_EUR_KM  # None or 0: wear off
 
